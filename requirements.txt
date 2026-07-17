@@ -2,7 +2,7 @@
 # Python 3.10+ | Windows and Linux
 
 # Audio Recording
-sounddevice>=0.4.6
+sounddevice>=0.5.5
 numpy>=1.24.0
 soundfile>=0.12.1
 
