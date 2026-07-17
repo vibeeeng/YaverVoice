@@ -10,7 +10,7 @@ soundfile>=0.12.1
 tinytag>=2.2.1,<3
 
 # Global Hotkeys
-pynput>=1.7.6
+pynput>=1.8.2
 
 # Groq API Client
 groq>=0.4.1
