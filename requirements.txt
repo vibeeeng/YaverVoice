@@ -4,7 +4,7 @@
 # Audio Recording
 sounddevice>=0.4.6
 numpy>=1.24.0
-soundfile>=0.12.1
+soundfile>=0.14.0
 
 # Audio metadata (for m4a and other formats)
 tinytag>=2.2.1,<3
