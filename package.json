@@ -1,0 +1,98 @@
+{
+  "name": "yavervoice-desktop",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
+  "author": "vibeeeng",
+  "description": "YaverVoice Electron desktop app backed by the Python sidecar.",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibeeeng/YaverVoice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vibeeeng/YaverVoice/issues"
+  },
+  "homepage": "https://github.com/vibeeeng/YaverVoice#readme",
+  "main": "desktop/dist/main/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node desktop/scripts/dev.js",
+    "desktop:dev": "node desktop/scripts/dev.js",
+    "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File ./build.ps1",
+    "desktop:compile": "tsc -p tsconfig.electron.json && vite build",
+    "desktop:build": "npm run desktop:compile && electron-builder --win nsis portable --x64",
+    "desktop:typecheck": "tsc -p tsconfig.electron.json && tsc -p tsconfig.renderer.json --noEmit",
+    "desktop:electron:dev": "wait-on http://127.0.0.1:5173 && tsc -p tsconfig.electron.json && electron ."
+  },
+  "build": {
+    "appId": "com.yavervoice.desktop",
+    "productName": "YaverVoice",
+    "asar": true,
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "logo"
+    },
+    "files": [
+      "package.json",
+      "desktop/dist/main/**/*",
+      "desktop/dist/preload/**/*",
+      "desktop/dist/renderer/**/*",
+      "desktop/quick/**/*",
+      "logo/logo1.png",
+      "logo/yavervoice-bubble-logo.png"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/sidecar/YaverVoiceSidecar.exe",
+        "to": "sidecar/YaverVoiceSidecar.exe"
+      }
+    ],
+    "win": {
+      "icon": "logo/logo1.png",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "YaverVoice"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "electron": "43.1.0",
+    "electron-builder": "^26.8.1",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "wait-on": "^8.0.1"
+  }
+}

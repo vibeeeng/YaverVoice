@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <title>YaverVoice Quick Dictation</title>
+    <link rel="stylesheet" href="./quick.css" />
+  </head>
+  <body>
+    <main id="bubble" class="bubble">
+      <button id="recordButton" class="record" type="button" title="Toggle Quick Dictation">
+        <span class="medallion" aria-hidden="true">
+          <span id="spinner" class="spinner" hidden></span>
+          <img class="logo" src="../../logo/yavervoice-bubble-logo.png" alt="" draggable="false" />
+        </span>
+        <span class="copy">
+          <strong id="title">YaverVoice</strong>
+          <span class="statusLine"><span class="statusDot"></span><span id="status">Ready</span></span>
+        </span>
+      </button>
+      <div class="actions">
+        <button id="showButton" type="button" title="Show dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 9h18" /><path d="M8 15h5" /></svg>
+        </button>
+        <button id="hideButton" type="button" title="Hide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+    </main>
+    <script src="./quick.js"></script>
+  </body>
+</html>

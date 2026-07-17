@@ -1,0 +1,155 @@
+:root {
+  --text: #f8fbff;
+  --muted: rgba(203, 213, 225, 0.76);
+  --cyan: #22d3ee;
+  --violet: #8b5cf6;
+  --record: #fb5f7d;
+  --ok: #34d399;
+  --warn: #f59e0b;
+  color: var(--text);
+  background: #070a12;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background: #070a12;
+}
+
+.bubble {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 26%, rgba(34, 211, 238, 0.18), transparent 40%), radial-gradient(circle at 70% 72%, rgba(139, 92, 246, 0.14), transparent 42%), #070a12;
+  box-shadow: inset 0 0 0 1px rgba(154, 226, 255, 0.08), 0 0 22px rgba(34, 211, 238, 0.1);
+  cursor: grab;
+}
+
+.bubble.dragging { cursor: grabbing; }
+.bubble::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+button {
+  -webkit-app-region: no-drag;
+  position: relative;
+  z-index: 1;
+  border: 0;
+  font: inherit;
+}
+
+.record {
+  width: 74px;
+  height: 64px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.record:active { transform: scale(0.985); }
+.bubble.dragging .record:active { transform: none; }
+
+.medallion {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(#101827, #101827) padding-box, linear-gradient(145deg, rgba(34, 211, 238, 0.88), rgba(139, 92, 246, 0.78)) border-box;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.medallion::before,
+.medallion::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+.medallion::before { inset: -6px; }
+.medallion::after { inset: -10px; }
+
+.logo {
+  position: relative;
+  width: 37px;
+  height: 37px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 9px rgba(34, 211, 238, 0.24));
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.copy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.statusLine { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 600; line-height: 1; }
+#status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statusDot { width: 6px; height: 6px; border-radius: 999px; background: var(--cyan); box-shadow: 0 0 10px rgba(34, 211, 238, 0.62); }
+
+.actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 18px);
+  gap: 2px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.bubble:hover .actions,
+.bubble:focus-within .actions { opacity: 1; transform: translateY(0); }
+.actions button { width: 18px; height: 18px; padding: 0; display: inline-grid; place-items: center; border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: rgba(248, 251, 255, 0.9); cursor: pointer; }
+.actions button:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.22); }
+.actions svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.spinner { position: absolute; inset: -5px; border: 2px solid rgba(255, 255, 255, 0.08); border-top-color: rgba(34, 211, 238, 0.92); border-radius: 999px; animation: spin 0.8s linear infinite; pointer-events: none; }
+.recording { background: radial-gradient(circle at 50% 50%, rgba(251, 95, 125, 0.15), transparent 47%), #070a12; }
+.recording .medallion { background: linear-gradient(#1a1019, #1a1019) padding-box, linear-gradient(145deg, rgba(251, 95, 125, 0.96), rgba(139, 92, 246, 0.82)) border-box; box-shadow: 0 0 26px rgba(251, 95, 125, 0.28); }
+.recording .medallion::before { opacity: 1; animation: pulse 1s ease-out infinite; border-color: rgba(251, 95, 125, 0.42); }
+.recording .medallion::after { opacity: 1; animation: pulse 1s ease-out 0.32s infinite; border-color: rgba(251, 95, 125, 0.24); }
+.starting .medallion::before,
+.processing .medallion::before { opacity: 1; animation: pulse 1.2s ease-out infinite; border-color: rgba(34, 211, 238, 0.34); }
+.recording .statusDot,
+.error .statusDot { background: var(--record); box-shadow: 0 0 12px rgba(251, 95, 125, 0.7); }
+.processing .statusDot { background: var(--warn); box-shadow: 0 0 12px rgba(245, 158, 11, 0.62); }
+.success .statusDot { background: var(--ok); box-shadow: 0 0 12px rgba(52, 211, 153, 0.62); }
+
+@keyframes pulse { 0% { transform: scale(0.94); opacity: 0.88; } 100% { transform: scale(1.34); opacity: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
