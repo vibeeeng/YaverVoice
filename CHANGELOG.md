@@ -2,11 +2,11 @@
 
 All notable changes to YaverVoice will be documented here.
 
-## [0.1.0-beta.1] - Unreleased
+## [0.1.0-beta.1] - 2026-07-17
 
 ### Added
 
-- Source-only Windows-primary/Linux desktop beta.
+- Windows x64 packaged beta plus source installation for Windows and Linux.
 - Groq Cloud and Local Whisper transcription workflows.
 - Recording, file transcription, split, Docs, converter, History, and Quick Dictation surfaces.
 - Electron sandbox, strict preload separation, renderer CSP, navigation blocking, sender URL/frame checks, and IPC allowlists.

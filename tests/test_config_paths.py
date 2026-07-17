@@ -62,7 +62,15 @@ class ConfigPathTests(unittest.TestCase):
 
             self.assertEqual(resolved, canonical)
             env_text = (canonical / ".env").read_text(encoding="utf-8")
-            self.assertIn(f"AUDIO_CLEANUP_RNN_MODEL={canonical_model}", env_text)
+            env_values = dict(
+                line.split("=", 1)
+                for line in env_text.splitlines()
+                if "=" in line
+            )
+            self.assertEqual(
+                Path(env_values["AUDIO_CLEANUP_RNN_MODEL"]).resolve(),
+                canonical_model.resolve(),
+            )
             self.assertIn("GROQ_API_KEY=placeholder", env_text)
 
     def test_whole_directory_migration_repairs_managed_rnnoise_path(self):
@@ -86,9 +94,14 @@ class ConfigPathTests(unittest.TestCase):
             canonical_model = canonical / "models" / "rnnoise" / "cleanup.rnnn"
             self.assertEqual(resolved, canonical)
             self.assertEqual(canonical_model.read_bytes(), b"model")
-            self.assertIn(
-                f"AUDIO_CLEANUP_RNN_MODEL={canonical_model}",
-                (canonical / ".env").read_text(encoding="utf-8"),
+            env_values = dict(
+                line.split("=", 1)
+                for line in (canonical / ".env").read_text(encoding="utf-8").splitlines()
+                if "=" in line
+            )
+            self.assertEqual(
+                Path(env_values["AUDIO_CLEANUP_RNN_MODEL"]).resolve(),
+                canonical_model.resolve(),
             )
 
     def test_migration_does_not_rewrite_external_rnnoise_path(self):

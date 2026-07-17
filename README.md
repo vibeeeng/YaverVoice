@@ -7,13 +7,14 @@
 <p align="center">Desktop speech-to-text with Groq Cloud or Local Whisper.</p>
 
 <p align="center">
-  <img alt="Release" src="https://img.shields.io/badge/release-v0.1.0--beta.1-orange">
-  <img alt="Distribution" src="https://img.shields.io/badge/distribution-source--only-blue">
-  <img alt="License" src="https://img.shields.io/badge/license-GPL--3.0--only-blue">
+  <a href="https://github.com/vibeeeng/YaverVoice/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vibeeeng/YaverVoice/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/vibeeeng/YaverVoice/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/vibeeeng/YaverVoice?include_prereleases"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-2A7FFF">
+  <a href="LICENSE"><img alt="License: GPL-3.0-only" src="https://img.shields.io/badge/license-GPL--3.0--only-blue"></a>
 </p>
 
 > [!IMPORTANT]
-> `v0.1.0-beta.1` is a source-only public beta. There is no official installer or portable executable yet. Windows is the primary target; Linux is supported from source.
+> `v0.1.0-beta.1` is a public beta. Windows x64 installer and portable builds are available, but they are not code-signed yet and may trigger Microsoft Defender SmartScreen. Linux is supported from source.
 
 YaverVoice is an Electron desktop application backed by a local Python sidecar. It records microphone audio, transcribes files, keeps current-session history, creates Markdown notes, converts audio formats, and provides a compact Quick Dictation window.
 
@@ -29,6 +30,16 @@ YaverVoice is an Electron desktop application backed by a local Python sidecar. 
 - FFmpeg-based conversion and optional audio cleanup
 - Windows and Linux desktop platform layers
 - No telemetry or analytics
+
+## Downloads
+
+Download the Windows x64 beta from the [`v0.1.0-beta.1` release](https://github.com/vibeeeng/YaverVoice/releases/tag/v0.1.0-beta.1):
+
+- **Setup:** recommended for a normal Windows installation
+- **Portable:** runs without installation
+- **SHA256SUMS.txt:** verifies the downloaded executables
+
+The Windows package includes the Local Whisper runtime dependencies, but not a speech model. YaverVoice downloads the selected model only after you explicitly prepare Local Whisper from Settings. Linux users should follow the source setup below.
 
 ## Requirements
 
