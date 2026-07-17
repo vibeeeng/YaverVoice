@@ -20,4 +20,4 @@ python-dotenv>=1.0.0
 
 # Text Injection
 pyautogui>=0.9.54
-pyperclip>=1.8.0
+pyperclip>=1.11.0
