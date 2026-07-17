@@ -3,7 +3,7 @@
 
 # Audio Recording
 sounddevice>=0.4.6
-numpy>=1.24.0
+numpy>=1.26.4
 soundfile>=0.12.1
 
 # Audio metadata (for m4a and other formats)
