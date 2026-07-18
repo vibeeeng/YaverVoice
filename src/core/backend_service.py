@@ -117,6 +117,7 @@ class BackendService(
                 continue
             except OSError as exc:
                 print(f"[BackendService] Could not remove session temp file {candidate}: {exc}")
+        cleanup_stale_temp_files(temp_dir, max_age_seconds=0)
 
     def request_shutdown(self) -> dict[str, bool]:
         self._emit("app.shutdown", {"source": "hotkey_ctrl_alt_q"})

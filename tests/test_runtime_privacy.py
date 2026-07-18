@@ -26,6 +26,12 @@ class RuntimePrivacyTests(unittest.TestCase):
             recording.write_bytes(b"recording")
             split = temp_dir / "meeting_001_part.wav"
             split.write_bytes(b"split")
+            orphan_recording = temp_dir / "recording_orphan.wav"
+            orphan_split = temp_dir / "meeting_002_part.mp3"
+            orphan_metadata = temp_dir / "old_job_meta.json"
+            unrelated = temp_dir / "test_tone.wav"
+            for path in (orphan_recording, orphan_split, orphan_metadata, unrelated):
+                path.write_bytes(b"temp")
 
             history = HistoryManager()
             history.add_recording(str(user_file), source=SourceType.FILE)
@@ -42,6 +48,10 @@ class RuntimePrivacyTests(unittest.TestCase):
             self.assertTrue(user_file.exists())
             self.assertFalse(recording.exists())
             self.assertFalse(split.exists())
+            self.assertFalse(orphan_recording.exists())
+            self.assertFalse(orphan_split.exists())
+            self.assertFalse(orphan_metadata.exists())
+            self.assertTrue(unrelated.exists())
 
     def test_stale_cleanup_removes_only_known_old_artifacts(self):
         with tempfile.TemporaryDirectory() as root:
