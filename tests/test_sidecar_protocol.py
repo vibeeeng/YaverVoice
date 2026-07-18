@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
@@ -9,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.config import Config
-from src.sidecar import INVALID_PARAMS, METHOD_NOT_FOUND, SidecarJsonRpcServer
+from src.sidecar import INVALID_PARAMS, METHOD_NOT_FOUND, SidecarJsonRpcServer, serve
 from tests.sidecar_test_support import SidecarTestCase
 
 
@@ -96,7 +97,8 @@ class SidecarProtocolTests(SidecarTestCase):
                 audio_path,
                 extra_env={"PYTHONUTF8": "0", "PYTHONIOENCODING": "cp1254"},
             )
-            self.assertEqual(legacy_response["error"]["message"], "File does not exist")
+            self.assertEqual(legacy_response["result"]["name"], audio_path.name)
+            self.assertEqual(legacy_response["result"]["extension"], ".wav")
 
             utf8_response = self._run_sidecar_register_selected(
                 audio_path,
@@ -104,6 +106,35 @@ class SidecarProtocolTests(SidecarTestCase):
             )
             self.assertEqual(utf8_response["result"]["name"], audio_path.name)
             self.assertEqual(utf8_response["result"]["extension"], ".wav")
+
+    def test_serve_reconfigures_packaged_protocol_streams_to_utf8(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
+            os.environ, {"XDG_DATA_HOME": temp_dir}, clear=True
+        ), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            audio_path = Path(temp_dir) / "deneme-çğışöü.wav"
+            audio_path.write_bytes(b"RIFFfake")
+            payload = json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "files.register_selected",
+                    "params": {"path": str(audio_path)},
+                },
+                ensure_ascii=False,
+            )
+            stdin = io.TextIOWrapper(io.BytesIO(f"{payload}\n".encode("utf-8")), encoding="cp1254")
+            stdout_bytes = io.BytesIO()
+            stdout = io.TextIOWrapper(stdout_bytes, encoding="cp1254")
+
+            result = serve(stdin, stdout)
+            stdout.flush()
+            response = json.loads(stdout_bytes.getvalue().decode("utf-8"))
+
+        self.assertEqual(result, 0)
+        self.assertIn("result", response, response)
+        self.assertEqual(response["result"]["name"], audio_path.name)
 
     def _run_sidecar_register_selected(self, audio_path: Path, *, extra_env: dict[str, str]) -> dict:
         env = os.environ.copy()

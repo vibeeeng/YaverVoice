@@ -50,10 +50,12 @@ class DocumentationTests(unittest.TestCase):
         result = generator.generate("Bu bir toplanti transkriptidir.", source_name="meeting.wav", language="tr")
 
         self.assertTrue(result.markdown.startswith("# Test Doc"))
-        self.assertEqual(result.model, "meta-llama/llama-4-scout-17b-16e-instruct")
+        self.assertEqual(result.model, "openai/gpt-oss-120b")
         self.assertEqual(result.calls, 1)
-        self.assertEqual(client.chat.completions.calls[0]["model"], "meta-llama/llama-4-scout-17b-16e-instruct")
+        self.assertEqual(client.chat.completions.calls[0]["model"], "openai/gpt-oss-120b")
         self.assertEqual(client.chat.completions.calls[0]["temperature"], 0.2)
+        self.assertEqual(client.chat.completions.calls[0]["reasoning_effort"], "low")
+        self.assertEqual(client.chat.completions.calls[0]["reasoning_format"], "hidden")
 
     def test_long_transcript_is_reduced_before_final_markdown(self):
         client = FakeClient()
@@ -66,12 +68,14 @@ class DocumentationTests(unittest.TestCase):
 
     def test_can_select_qwen_model_profile(self):
         client = FakeClient()
-        generator = GroqDocumentationGenerator(FAKE_GROQ_KEY, model="qwen/qwen3-32b", client=client)
+        generator = GroqDocumentationGenerator(FAKE_GROQ_KEY, model="qwen/qwen3.6-27b", client=client)
 
         result = generator.generate("hello", source_name="short.wav", language="en")
 
-        self.assertEqual(result.model, "qwen/qwen3-32b")
-        self.assertEqual(client.chat.completions.calls[0]["model"], "qwen/qwen3-32b")
+        self.assertEqual(result.model, "qwen/qwen3.6-27b")
+        self.assertEqual(client.chat.completions.calls[0]["model"], "qwen/qwen3.6-27b")
+        self.assertEqual(client.chat.completions.calls[0]["reasoning_effort"], "none")
+        self.assertEqual(client.chat.completions.calls[0]["reasoning_format"], "hidden")
 
     def test_detail_profile_changes_max_tokens_and_prompt(self):
         client = FakeClient()

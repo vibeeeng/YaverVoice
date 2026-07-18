@@ -141,10 +141,10 @@ class SidecarWorkflowTests(SidecarTestCase):
             )
 
             selected = service.register_selected_docs_file(str(audio_path))
-            response = service.start_docs_workflow(selected["token"], str(output_path), "qwen/qwen3-32b", "detailed", "tr")
+            response = service.start_docs_workflow(selected["token"], str(output_path), "qwen/qwen3.6-27b", "detailed", "tr")
             self.assertTrue(response["accepted"])
             self.assertEqual(response["message"], "Docs workflow started (Detailed · Turkish).")
-            self.assertEqual(response["model"], "qwen/qwen3-32b")
+            self.assertEqual(response["model"], "qwen/qwen3.6-27b")
             self.assertEqual(response["detail"], "detailed")
             self.assertEqual(response["output_language"], "tr")
             self.assertEqual(response["output_language_label"], "Turkish")
@@ -198,11 +198,11 @@ class SidecarWorkflowTests(SidecarTestCase):
             )
 
             selected = service.register_selected_docs_file(str(audio_path))
-            response = service.docs_preflight(selected["token"], "qwen/qwen3-32b", "detailed", "tr")
+            response = service.docs_preflight(selected["token"], "qwen/qwen3.6-27b", "detailed", "tr")
 
         self.assertFalse(response["ready"])
         self.assertIn("Groq API key required", response["blockers"][0])
-        self.assertEqual(response["model"], "qwen/qwen3-32b")
+        self.assertEqual(response["model"], "qwen/qwen3.6-27b")
         self.assertEqual(response["detail"], "detailed")
         self.assertEqual(response["output_language"], "tr")
         self.assertEqual(response["output_language_label"], "Turkish")
@@ -224,9 +224,9 @@ class SidecarWorkflowTests(SidecarTestCase):
             )
 
             selected = service.register_selected_docs_file(str(audio_path))
-            response = service.docs_preflight(selected["token"], "qwen/qwen3-32b", "detailed")
+            response = service.docs_preflight(selected["token"], "qwen/qwen3.6-27b", "detailed")
             config.save_language("auto")
-            auto_response = service.docs_preflight(selected["token"], "qwen/qwen3-32b", "detailed")
+            auto_response = service.docs_preflight(selected["token"], "qwen/qwen3.6-27b", "detailed")
 
         self.assertTrue(response["ready"])
         self.assertEqual(response["output_language"], "de")
@@ -250,7 +250,7 @@ class SidecarWorkflowTests(SidecarTestCase):
             )
 
             response = service.docs_preflight("missing", "bad-model", "bad-detail", "bad-language")
-            auto_response = service.docs_preflight("missing", "qwen/qwen3-32b", "detailed", "auto")
+            auto_response = service.docs_preflight("missing", "qwen/qwen3.6-27b", "detailed", "auto")
 
         self.assertFalse(response["ready"])
         self.assertIn("Invalid Docs model", response["blockers"])
@@ -266,7 +266,10 @@ class SidecarWorkflowTests(SidecarTestCase):
             service = self.make_service(temp_dir)
             models = service.docs_model_profiles()
 
-        self.assertTrue(any(model["id"] == "meta-llama/llama-4-scout-17b-16e-instruct" for model in models))
+        self.assertEqual(
+            [model["id"] for model in models],
+            ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b"],
+        )
         self.assertTrue(all("chunk_chars" in model for model in models))
 
     def test_docs_details_return_supported_profiles(self):

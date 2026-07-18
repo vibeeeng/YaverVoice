@@ -303,6 +303,11 @@ class SidecarJsonRpcServer:
 
 def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> int:
     """Run the sidecar loop."""
+    for stream in (stdin, stdout):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
+
     protocol_stdout = stdout
     write_lock = threading.RLock()
 

@@ -46,7 +46,7 @@ export function DocsView({
   const [duration, setDuration] = useState<FileDuration | null>(null);
   const [models, setModels] = useState<DocsModelProfile[]>([]);
   const [details, setDetails] = useState<DocsDetailProfile[]>([]);
-  const [selectedModel, setSelectedModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
+  const [selectedModel, setSelectedModel] = useState("openai/gpt-oss-120b");
   const [selectedDetail, setSelectedDetail] = useState("standard");
   const [selectedOutputLanguage, setSelectedOutputLanguage] = useState<DocsOutputLanguage>(() => docsOutputLanguageFromSettings(settings?.language));
   const [outputLanguageTouched, setOutputLanguageTouched] = useState(false);

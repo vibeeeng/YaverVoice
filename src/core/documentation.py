@@ -14,7 +14,7 @@ from typing import Any, Callable
 from groq import Groq
 
 
-DEFAULT_DOCS_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+DEFAULT_DOCS_MODEL = "openai/gpt-oss-120b"
 DEFAULT_DOCS_DETAIL = "standard"
 DEFAULT_DOCS_OUTPUT_LANGUAGE = "same"
 
@@ -164,45 +164,41 @@ DOCS_DETAIL_PROFILES: dict[str, dict[str, Any]] = {
 }
 
 DOCS_MODEL_PROFILES: dict[str, dict[str, Any]] = {
-    "meta-llama/llama-4-scout-17b-16e-instruct": {
-        "id": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "label": "Llama 4 Scout 17B",
-        "note": "MVP default: higher minute/day token limits for long notes.",
+    "openai/gpt-oss-120b": {
+        "id": "openai/gpt-oss-120b",
+        "label": "GPT-OSS 120B",
+        "note": "Default: high-quality long-context documentation.",
         "chunk_chars": 10000,
         "chunk_max_tokens": 1200,
         "final_max_tokens": 3600,
-        "tpm": "30K",
-        "tpd": "500K",
+        "tpm": "8K",
+        "tpd": "200K",
+        "reasoning_effort": "low",
+        "reasoning_format": "hidden",
     },
-    "qwen/qwen3-32b": {
-        "id": "qwen/qwen3-32b",
-        "label": "Qwen3 32B",
-        "note": "Good daily token room; slower minute budget.",
-        "chunk_chars": 7000,
+    "openai/gpt-oss-20b": {
+        "id": "openai/gpt-oss-20b",
+        "label": "GPT-OSS 20B",
+        "note": "Faster and lighter option for regular notes.",
+        "chunk_chars": 8000,
         "chunk_max_tokens": 1000,
         "final_max_tokens": 3200,
-        "tpm": "6K",
-        "tpd": "500K",
+        "tpm": "8K",
+        "tpd": "200K",
+        "reasoning_effort": "low",
+        "reasoning_format": "hidden",
     },
-    "llama-3.3-70b-versatile": {
-        "id": "llama-3.3-70b-versatile",
-        "label": "Llama 3.3 70B",
-        "note": "Higher quality option; lower daily token budget.",
-        "chunk_chars": 8000,
-        "chunk_max_tokens": 1200,
-        "final_max_tokens": 3800,
-        "tpm": "12K",
-        "tpd": "100K",
-    },
-    "llama-3.1-8b-instant": {
-        "id": "llama-3.1-8b-instant",
-        "label": "Llama 3.1 8B Instant",
-        "note": "Fast/light test option; lower summarization quality.",
-        "chunk_chars": 7000,
-        "chunk_max_tokens": 900,
-        "final_max_tokens": 2600,
-        "tpm": "6K",
-        "tpd": "500K",
+    "qwen/qwen3.6-27b": {
+        "id": "qwen/qwen3.6-27b",
+        "label": "Qwen 3.6 27B",
+        "note": "Multilingual preview option with long context.",
+        "chunk_chars": 9000,
+        "chunk_max_tokens": 1100,
+        "final_max_tokens": 3400,
+        "tpm": "8K",
+        "tpd": "200K",
+        "reasoning_effort": "none",
+        "reasoning_format": "hidden",
     },
 }
 
@@ -318,6 +314,8 @@ class GroqDocumentationGenerator:
                 model=self.model,
                 temperature=0.2,
                 max_tokens=max_tokens,
+                reasoning_effort=self.profile["reasoning_effort"],
+                reasoning_format=self.profile["reasoning_format"],
             )
             self._record_usage(response)
             content = response.choices[0].message.content

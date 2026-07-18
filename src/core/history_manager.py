@@ -54,16 +54,34 @@ class HistoryManager:
 
     def get_recordings(self) -> list[Recording]:
         """
-        Get all recordings, newest first.
+        Get all recordings with newest entries first and split parts in transcript order.
 
         Returns:
-            List of recordings sorted by creation time (newest first).
+            List of recordings with split jobs kept as ordered groups.
         """
-        return sorted(
-            self._recordings.values(),
-            key=lambda r: r.created_at,
-            reverse=True
-        )
+        entries: list[tuple[datetime, int, list[Recording]]] = []
+        split_groups: dict[str, list[tuple[int, Recording]]] = {}
+
+        for order, recording in enumerate(self._recordings.values()):
+            split_group_id = recording.parent_recording_id or recording.chunk_job_id
+            if recording.is_split and split_group_id:
+                split_groups.setdefault(split_group_id, []).append((order, recording))
+            else:
+                entries.append((recording.created_at, order, [recording]))
+
+        for group in split_groups.values():
+            recordings = [recording for _, recording in group]
+            recordings.sort(key=lambda recording: (recording.chunk_part is None, recording.chunk_part or 0))
+            entries.append(
+                (
+                    max(recording.created_at for recording in recordings),
+                    max(order for order, _ in group),
+                    recordings,
+                )
+            )
+
+        entries.sort(key=lambda entry: (entry[0], entry[1]), reverse=True)
+        return [recording for _, _, recordings in entries for recording in recordings]
 
     def get_recording(self, recording_id: str) -> Recording | None:
         """
