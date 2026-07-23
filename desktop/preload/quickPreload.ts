@@ -10,6 +10,7 @@ const invoke = <T>(method: string, params?: Record<string, unknown>): Promise<T>
 };
 
 const api = {
+  platform: process.platform,
   recording: {
     status: () => invoke("recording.status")
   },

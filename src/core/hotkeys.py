@@ -57,6 +57,9 @@ class HotkeyController:
             return self._set_status(False, False, "disabled", f"pynput unavailable: {PYNPUT_IMPORT_ERROR}")
         if not self.platform.has_graphical_session():
             return self._set_status(False, False, "disabled", "No graphical desktop session detected")
+        platform_error = self.platform.global_hotkey_error()
+        if platform_error:
+            return self._set_status(False, False, "unsupported", platform_error)
 
         try:
             self._refresh_hotkey_state()

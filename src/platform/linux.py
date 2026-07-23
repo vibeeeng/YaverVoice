@@ -4,6 +4,7 @@ Linux-specific desktop platform services.
 
 from __future__ import annotations
 
+import os
 from typing import Iterable
 
 from src.platform.base import DesktopPlatform, RecordingProfile
@@ -11,6 +12,15 @@ from src.platform.base import DesktopPlatform, RecordingProfile
 
 class LinuxPlatform(DesktopPlatform):
     name = "linux"
+
+    def global_hotkey_error(self) -> str | None:
+        session_type = os.environ.get("XDG_SESSION_TYPE", "").strip().lower()
+        if session_type == "wayland" or os.environ.get("WAYLAND_DISPLAY"):
+            return (
+                "Global hold-to-talk hotkeys are unavailable on Wayland. "
+                "Sign in with an X11 session to use Right Ctrl."
+            )
+        return None
 
     def paste_hotkey(self) -> tuple[str, ...]:
         return ("ctrl", "shift", "v")

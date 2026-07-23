@@ -79,7 +79,18 @@ source venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-On Ubuntu/Debian, install the native audio/desktop helpers first: `sudo apt install python3-venv portaudio19-dev xclip`. Add `ffmpeg` when using conversion, extended formats, splitting, or cleanup. Wayland environments may limit global hotkeys and simulated paste.
+On Ubuntu/Debian, install the native audio/desktop helpers first: `sudo apt install python3-venv portaudio19-dev xclip`. Add `ffmpeg` when using conversion, extended formats, splitting, or cleanup.
+
+If Electron stops with a `chrome-sandbox` ownership or mode error, run the following commands from the repository root:
+
+```bash
+sudo chown root:root node_modules/electron/dist/chrome-sandbox
+sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+Reinstalling Node dependencies or updating Electron can replace this helper, so repeat the commands if the error returns. Do not work around the error with Electron's `--no-sandbox` option.
+
+Native Wayland sessions currently limit `pynput`, which YaverVoice uses for global key press and release events. Quick Dictation hold-to-talk therefore requires an X11 session; on Ubuntu, choose **Ubuntu on Xorg** from the session menu at sign-in. Simulated paste may also be limited on Wayland.
 
 Start the desktop app:
 

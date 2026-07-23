@@ -9,11 +9,20 @@ from unittest.mock import patch
 
 from src.config import Config
 from src.core.hotkeys import HotkeyController
+from src.platform.linux import LinuxPlatform
 
 
 class FakePlatform:
     def has_graphical_session(self) -> bool:
         return True
+
+    def global_hotkey_error(self) -> str | None:
+        return None
+
+
+class UnsupportedHotkeyPlatform(FakePlatform):
+    def global_hotkey_error(self) -> str | None:
+        return "Global hotkeys are unavailable in this test session"
 
 
 class FakeService:
@@ -129,6 +138,46 @@ class HotkeyControllerTests(unittest.TestCase):
             controller.press_token("x")
 
         self.assertEqual(service.starts, ["hotkey_toggle"])
+
+    def test_linux_wayland_reports_global_hotkeys_as_unsupported(self):
+        with patch.dict(
+            os.environ,
+            {
+                "XDG_SESSION_TYPE": "wayland",
+                "WAYLAND_DISPLAY": "wayland-0",
+                "DISPLAY": ":0",
+            },
+            clear=True,
+        ):
+            error = LinuxPlatform().global_hotkey_error()
+
+        self.assertIsNotNone(error)
+        self.assertIn("Wayland", error or "")
+        self.assertIn("X11", error or "")
+
+    def test_linux_x11_allows_global_hotkey_listener(self):
+        with patch.dict(
+            os.environ,
+            {"XDG_SESSION_TYPE": "x11", "DISPLAY": ":0"},
+            clear=True,
+        ):
+            error = LinuxPlatform().global_hotkey_error()
+
+        self.assertIsNone(error)
+
+    def test_hotkey_start_returns_platform_capability_error_before_listener(self):
+        with patch.dict(os.environ, {}, clear=True):
+            controller, _service = self.make_controller([])
+            controller.platform = UnsupportedHotkeyPlatform()  # type: ignore[assignment]
+            status = controller.start()
+
+        self.assertFalse(status["enabled"])
+        self.assertFalse(status["registered"])
+        self.assertEqual(status["status"], "unsupported")
+        self.assertEqual(
+            status["error"],
+            "Global hotkeys are unavailable in this test session",
+        )
 
 
 if __name__ == "__main__":

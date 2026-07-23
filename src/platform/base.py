@@ -39,6 +39,9 @@ class DesktopPlatform:
     def has_graphical_session(self) -> bool:
         return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
+    def global_hotkey_error(self) -> str | None:
+        return None
+
     def get_primary_screen_geometry(self) -> tuple[int, int]:
         """Return the primary screen size with tkinter fallback."""
         try:

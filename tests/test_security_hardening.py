@@ -129,40 +129,51 @@ class DesktopIpcSecurityTests(unittest.TestCase):
         self.assertNotRegex(quick_html, r"<script(?![^>]*\bsrc=)")
         self.assertNotIn("unsafe-inline", quick_html)
 
-    def test_linux_wayland_uses_x11_compatibility_before_runtime_start(self):
+    def test_linux_wayland_is_not_forced_into_x11(self):
         main = (REPO_ROOT / "desktop" / "main" / "main.ts").read_text(
             encoding="utf-8"
         )
 
-        compatibility_guard = main.find('process.platform === "linux"')
-        x11_switch = main.find(
-            'app.commandLine.appendSwitch("ozone-platform", "x11")'
-        )
-        runtime_start = main.index("const projectRoot = app.getAppPath()")
-
-        self.assertGreaterEqual(compatibility_guard, 0)
-        self.assertGreaterEqual(x11_switch, 0)
-        self.assertLess(compatibility_guard, x11_switch)
-        self.assertLess(x11_switch, runtime_start)
-        self.assertIn("XDG_SESSION_TYPE", main[compatibility_guard:runtime_start])
-        self.assertIn("WAYLAND_DISPLAY", main[compatibility_guard:runtime_start])
-        self.assertIn("DISPLAY", main[compatibility_guard:runtime_start])
-        self.assertIn(
-            'app.commandLine.hasSwitch("ozone-platform")',
-            main[compatibility_guard:runtime_start],
+        self.assertNotIn(
+            'app.commandLine.appendSwitch("ozone-platform", "x11")',
+            main,
         )
 
-    def test_quick_bubble_exposes_native_drag_region(self):
+    def test_quick_bubble_uses_linux_native_drag_handle(self):
+        quick_html = (
+            REPO_ROOT / "desktop" / "quick" / "quick.html"
+        ).read_text(encoding="utf-8")
         quick_css = (
             REPO_ROOT / "desktop" / "quick" / "quick.css"
         ).read_text(encoding="utf-8")
+        quick_js = (
+            REPO_ROOT / "desktop" / "quick" / "quick.js"
+        ).read_text(encoding="utf-8")
+        quick_preload = (
+            REPO_ROOT / "desktop" / "preload" / "quickPreload.ts"
+        ).read_text(encoding="utf-8")
 
         bubble_rule = re.search(r"\.bubble\s*\{(.*?)\}", quick_css, re.DOTALL)
+        linux_handle_rule = re.search(
+            r"\.platform-linux\s+\.dragHandle\s*\{(.*?)\}",
+            quick_css,
+            re.DOTALL,
+        )
         button_rule = re.search(r"button\s*\{(.*?)\}", quick_css, re.DOTALL)
 
+        self.assertIn('class="dragHandle"', quick_html)
+        self.assertIn("platform: process.platform", quick_preload)
+        self.assertIn('window.yaverVoice?.platform === "linux"', quick_js)
+        self.assertIn("if (usesNativeWindowDrag", quick_js)
+        self.assertIn(
+            'usesNativeWindowDrag ? "platform-linux " : ""',
+            quick_js,
+        )
         self.assertIsNotNone(bubble_rule)
+        self.assertIsNotNone(linux_handle_rule)
         self.assertIsNotNone(button_rule)
-        self.assertIn("-webkit-app-region: drag", bubble_rule.group(1))
+        self.assertNotIn("-webkit-app-region: drag", bubble_rule.group(1))
+        self.assertIn("-webkit-app-region: drag", linux_handle_rule.group(1))
         self.assertIn("-webkit-app-region: no-drag", button_rule.group(1))
 
     def test_dashboard_declares_content_security_policy(self):

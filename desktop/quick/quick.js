@@ -3,6 +3,7 @@ const recordButton = document.getElementById("recordButton");
 const title = document.getElementById("title");
 const status = document.getElementById("status");
 const spinner = document.getElementById("spinner");
+const usesNativeWindowDrag = window.yaverVoice?.platform === "linux";
 const dragState = { active: false, moved: false, pointerId: null, startedOnRecord: false, startX: 0, startY: 0, lastX: 0, lastY: 0 };
 let suppressNextClick = false;
 let toggleInFlight = false;
@@ -12,8 +13,10 @@ const stateCopy = {
   stopping: ["Stopping", "Wait"], processing: ["Processing", "Wait"], success: ["Done", "Copied"], error: ["Failed", "Retry"]
 };
 
+if (usesNativeWindowDrag) bubble.classList.add("platform-linux");
+
 function renderState(state) {
-  bubble.className = `bubble ${state === "idle" ? "" : state}`.trim();
+  bubble.className = `bubble ${usesNativeWindowDrag ? "platform-linux " : ""}${state === "idle" ? "" : state}`.trim();
   spinner.hidden = !["starting", "stopping", "processing"].includes(state);
   const copy = stateCopy[state];
   if (copy) [title.textContent, status.textContent] = copy;
@@ -27,7 +30,7 @@ function setRecordingState(payload) {
 }
 
 bubble.addEventListener("pointerdown", (event) => {
-  if (event.button !== 0 || !window.yaverVoice || event.target.closest(".actions")) return;
+  if (usesNativeWindowDrag || event.button !== 0 || !window.yaverVoice || event.target.closest(".actions")) return;
   Object.assign(dragState, { active: true, moved: false, pointerId: event.pointerId, startedOnRecord: recordButton.contains(event.target), startX: event.screenX, startY: event.screenY, lastX: event.screenX, lastY: event.screenY });
   bubble.setPointerCapture(event.pointerId);
 });
