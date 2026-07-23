@@ -7,6 +7,16 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { pathToFileURL } from "node:url";
 import { SidecarClient, SidecarError } from "./sidecarClient";
 
+const linuxWaylandSession = process.platform === "linux"
+  && Boolean(process.env.DISPLAY)
+  && (
+    process.env.XDG_SESSION_TYPE?.toLowerCase() === "wayland"
+    || Boolean(process.env.WAYLAND_DISPLAY)
+  );
+if (linuxWaylandSession && !app.commandLine.hasSwitch("ozone-platform")) {
+  app.commandLine.appendSwitch("ozone-platform", "x11");
+}
+
 const projectRoot = app.getAppPath();
 const sidecar = new SidecarClient(projectRoot, {
   packaged: app.isPackaged,

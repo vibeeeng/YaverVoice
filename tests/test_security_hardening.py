@@ -129,6 +129,42 @@ class DesktopIpcSecurityTests(unittest.TestCase):
         self.assertNotRegex(quick_html, r"<script(?![^>]*\bsrc=)")
         self.assertNotIn("unsafe-inline", quick_html)
 
+    def test_linux_wayland_uses_x11_compatibility_before_runtime_start(self):
+        main = (REPO_ROOT / "desktop" / "main" / "main.ts").read_text(
+            encoding="utf-8"
+        )
+
+        compatibility_guard = main.find('process.platform === "linux"')
+        x11_switch = main.find(
+            'app.commandLine.appendSwitch("ozone-platform", "x11")'
+        )
+        runtime_start = main.index("const projectRoot = app.getAppPath()")
+
+        self.assertGreaterEqual(compatibility_guard, 0)
+        self.assertGreaterEqual(x11_switch, 0)
+        self.assertLess(compatibility_guard, x11_switch)
+        self.assertLess(x11_switch, runtime_start)
+        self.assertIn("XDG_SESSION_TYPE", main[compatibility_guard:runtime_start])
+        self.assertIn("WAYLAND_DISPLAY", main[compatibility_guard:runtime_start])
+        self.assertIn("DISPLAY", main[compatibility_guard:runtime_start])
+        self.assertIn(
+            'app.commandLine.hasSwitch("ozone-platform")',
+            main[compatibility_guard:runtime_start],
+        )
+
+    def test_quick_bubble_exposes_native_drag_region(self):
+        quick_css = (
+            REPO_ROOT / "desktop" / "quick" / "quick.css"
+        ).read_text(encoding="utf-8")
+
+        bubble_rule = re.search(r"\.bubble\s*\{(.*?)\}", quick_css, re.DOTALL)
+        button_rule = re.search(r"button\s*\{(.*?)\}", quick_css, re.DOTALL)
+
+        self.assertIsNotNone(bubble_rule)
+        self.assertIsNotNone(button_rule)
+        self.assertIn("-webkit-app-region: drag", bubble_rule.group(1))
+        self.assertIn("-webkit-app-region: no-drag", button_rule.group(1))
+
     def test_dashboard_declares_content_security_policy(self):
         renderer_html = (REPO_ROOT / "desktop" / "renderer" / "index.html").read_text(encoding="utf-8")
 
