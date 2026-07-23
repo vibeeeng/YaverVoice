@@ -80,34 +80,35 @@ export function ConverterView({ pushToast }: { pushToast: (message: string, type
     <div className="fileWorkflow">
       <div className="fileWorkflowHeader">
         <div>
-          <span className="eyebrow">CONVERSION</span>
           <h3>Convert media</h3>
         </div>
         <span className="contextStatus">FFmpeg: {status?.installed ? "Ready" : "Not available"}</span>
       </div>
-      <div className="fileSelectionRow">
-        <button className="secondaryButton" type="button" onClick={() => void selectFile()}>
-          <FolderOpen size={16} />
-          Select file
-        </button>
-        {file && <p className="fileMetadata">{file.name}</p>}
-      </div>
-      <div className="fieldGrid">
-        <label>
-          Output format
-          <select value={format} onChange={(event) => setFormat(event.target.value)} disabled={formats.length === 0}>
-            {formats.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="workflowActions">
-        <button className="primaryButton" type="button" onClick={() => void convert()} disabled={!file || !status?.installed || processing}>
-          <Download size={16} />
-          {processing ? "Converting" : "Convert"}
-        </button>
-      </div>
-      <div className="workflowStatus" aria-live="polite">
-        {notice && <p className="statusText">{notice}</p>}
+      <div className="workflowSurface">
+        <div className="fileSelectionRow">
+          <button className="secondaryButton" type="button" onClick={() => void selectFile()}>
+            <FolderOpen size={16} />
+            Select file
+          </button>
+          {file && <p className="fileMetadata">{file.name}</p>}
+        </div>
+        <div className="fieldGrid">
+          <label>
+            Output format
+            <select value={format} onChange={(event) => setFormat(event.target.value)} disabled={formats.length === 0}>
+              {formats.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="workflowActions">
+          <button className="primaryButton" type="button" onClick={() => void convert()} disabled={!file || !status?.installed || processing}>
+            <Download size={16} />
+            {processing ? "Converting" : "Convert"}
+          </button>
+        </div>
+        <div className="workflowStatus" aria-live="polite">
+          {notice && <p className="statusText">{notice}</p>}
+        </div>
       </div>
     </div>
   );

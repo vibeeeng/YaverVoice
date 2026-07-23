@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileAudio, FolderOpen } from "lucide-react";
 
+import { ModalSurface } from "../components/ModalSurface";
 import type { FileDuration, HistoryItem, SelectedFile } from "../types/yaverVoice";
 import type { ToastMessage } from "../types/ui";
 import { clamp, formatAudioDuration } from "../utils/formatters";
@@ -20,6 +21,7 @@ export function FileTranscriptionView({
   const [progress, setProgress] = useState<number | null>(null);
   const [progressState, setProgressState] = useState<"idle" | "active" | "complete" | "error">("idle");
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const workflowSurfaceRef = useRef<HTMLDivElement | null>(null);
 
   const durationLabel = formatAudioDuration(duration);
   const fileModeLabel = duration?.should_split ? "Split required" : "Single pass";
@@ -152,41 +154,44 @@ export function FileTranscriptionView({
     <div className="fileWorkflow">
       <div className="fileWorkflowHeader">
         <div>
-          <span className="eyebrow">TRANSCRIPTION</span>
           <h3>Transcribe audio or video</h3>
         </div>
       </div>
-      <div className="fileSelectionRow">
-        <button className="secondaryButton" type="button" onClick={() => void selectFile()}>
-          <FolderOpen size={16} />
-          Select file
-        </button>
-        {file && (
-          <p className="fileMetadata">
-            {file.name} · {file.size_mb.toFixed(2)} MB · {durationLabel} · {duration ? `${duration.provider} · ${fileModeLabel}` : "Checking duration"}
-          </p>
-        )}
-      </div>
-      <div className="workflowActions">
-        <button className="primaryButton" type="button" onClick={() => void transcribe()} disabled={!file || !duration || processing}>
-          <FileAudio size={16} />
-          {processing ? "Processing" : duration?.should_split ? "Split and transcribe" : "Transcribe"}
-        </button>
-      </div>
-      {progress !== null && (
-        <div className={`progressBlock ${progressState}`} aria-label="File transcription progress" aria-valuemax={100} aria-valuemin={0} aria-valuenow={Math.round(progress)} role="progressbar">
-          <div className="progressMeta">
-            <span>{progressState === "error" ? "Failed" : progressState === "complete" ? "Complete" : "Processing"}</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="progressTrack">
-            <div className="progressFill" style={{ width: `${clamp(progress, 0, 100)}%` }} />
-          </div>
+      <div className="workflowSurface" ref={workflowSurfaceRef} tabIndex={-1}>
+        <div className="fileSelectionRow">
+          <button className="secondaryButton" type="button" onClick={() => void selectFile()}>
+            <FolderOpen size={16} />
+            Select file
+          </button>
+          {file && (
+            <p className="fileMetadata">
+              {file.name} · {file.size_mb.toFixed(2)} MB · {durationLabel} · {duration ? `${duration.provider} · ${fileModeLabel}` : "Checking duration"}
+            </p>
+          )}
         </div>
-      )}
+        <div className="workflowActions">
+          <button className="primaryButton" type="button" onClick={() => void transcribe()} disabled={!file || !duration || processing}>
+            <FileAudio size={16} />
+            {processing ? "Processing" : duration?.should_split ? "Split and transcribe" : "Transcribe"}
+          </button>
+        </div>
+        {progress !== null && (
+          <div className={`progressBlock ${progressState}`} aria-label="File transcription progress" aria-valuemax={100} aria-valuemin={0} aria-valuenow={Math.round(progress)} role="progressbar">
+            <div className="progressMeta">
+              <span>{progressState === "error" ? "Failed" : progressState === "complete" ? "Complete" : "Processing"}</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <div className="progressTrack">
+              <div className="progressFill" style={{ width: `${clamp(progress, 0, 100)}%` }} />
+            </div>
+          </div>
+        )}
+        <div className="workflowStatus" aria-live="polite">
+          {notice && <p className="statusText">{notice}</p>}
+        </div>
+      </div>
       {confirmOpen && file && (
-        <div className="modalBackdrop" role="presentation">
-          <div className="confirmDialog" role="dialog" aria-modal="true" aria-labelledby="file-confirm-title">
+        <ModalSurface labelledBy="file-confirm-title" className="confirmDialog" onClose={() => setConfirmOpen(false)} returnFocusFallbackRef={workflowSurfaceRef}>
             <h3 id="file-confirm-title">Start transcription?</h3>
             <p>{file.name}</p>
             <dl>
@@ -215,12 +220,8 @@ export function FileTranscriptionView({
                 Start transcription
               </button>
             </div>
-          </div>
-        </div>
+        </ModalSurface>
       )}
-      <div className="workflowStatus" aria-live="polite">
-        {notice && <p className="statusText">{notice}</p>}
-      </div>
     </div>
   );
 }

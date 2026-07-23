@@ -49,7 +49,6 @@ export function DocsProgressPanel({
     <>
       <div className="fileWorkflowHeader">
         <div>
-          <span className="eyebrow">DOCUMENTATION</span>
           <h3>Create notes</h3>
         </div>
         {activeModel && (
@@ -74,55 +73,57 @@ export function DocsProgressPanel({
           </div>
         )}
       </div>
-      {children}
-      {progress !== null && (
-        <div className={`progressBlock ${progressState}`} aria-label="Docs progress" aria-valuemax={100} aria-valuemin={0} aria-valuenow={Math.round(progress)} role="progressbar">
-          <div className="progressMeta">
-            <span>{progressState === "error" ? "Failed" : progressState === "complete" ? "Complete" : progressLabel}</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="progressTrack">
-            <div className="progressFill" style={{ width: `${clamp(progress, 0, 100)}%` }} />
-          </div>
-        </div>
-      )}
-      {progressState !== "complete" && progressState !== "error" && (
-        <div className="docsFormatPreview" aria-label="Markdown sections">
-          <span>Markdown</span>
-          <strong>Summary · Topics · Notes · Decisions · Actions · Questions</strong>
-        </div>
-      )}
-      {progressState !== "complete" && progressState !== "error" && docsLog.length > 0 && (
-        <div className="docsLog" aria-label="Docs log">
-          {docsLog.map((entry, index) => (
-            <span key={`${entry}-${index}`}>{entry}</span>
-          ))}
-        </div>
-      )}
-      {(progressState === "complete" || progressState === "error") && (
-        <div className="docsResultBlock">
-          <button
-            className="docsResultToggle"
-            type="button"
-            onClick={onToggleDocsOutput}
-          >
-            <span>{docsLog[0] ?? notice ?? (progressState === "complete" ? "Complete" : "Failed")}</span>
-            {docsOutputOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          {docsOutputOpen && (
-            <div className="docsResultDetail">
-              {notice && <p className="statusText">{notice}</p>}
-              {docsLog.length > 1 && (
-                <div className="docsLog">
-                  {docsLog.slice(1).map((entry, index) => (
-                    <span key={`${entry}-${index}`}>{entry}</span>
-                  ))}
-                </div>
-              )}
+      <div className="workflowSurface docsStudioSurface">
+        {children}
+        {progress !== null && (
+          <div className={`progressBlock ${progressState}`} aria-label="Docs progress" aria-valuemax={100} aria-valuemin={0} aria-valuenow={Math.round(progress)} role="progressbar">
+            <div className="progressMeta">
+              <span>{progressState === "error" ? "Failed" : progressState === "complete" ? "Complete" : progressLabel}</span>
+              <span>{Math.round(progress)}%</span>
             </div>
-          )}
-        </div>
-      )}
+            <div className="progressTrack">
+              <div className="progressFill" style={{ width: `${clamp(progress, 0, 100)}%` }} />
+            </div>
+          </div>
+        )}
+        {progressState !== "complete" && progressState !== "error" && (
+          <div className="docsFormatPreview" aria-label="Markdown sections">
+            <span>Markdown</span>
+            <strong>Summary · Topics · Notes · Decisions · Actions · Questions</strong>
+          </div>
+        )}
+        {progressState !== "complete" && progressState !== "error" && docsLog.length > 0 && (
+          <div className="docsLog" aria-label="Docs log">
+            {docsLog.map((entry, index) => (
+              <span key={`${entry}-${index}`}>{entry}</span>
+            ))}
+          </div>
+        )}
+        {(progressState === "complete" || progressState === "error") && (
+          <div className="docsResultBlock">
+            <button
+              className="docsResultToggle"
+              type="button"
+              onClick={onToggleDocsOutput}
+            >
+              <span>{docsLog[0] ?? notice ?? (progressState === "complete" ? "Complete" : "Failed")}</span>
+              {docsOutputOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            {docsOutputOpen && (
+              <div className="docsResultDetail">
+                {notice && <p className="statusText">{notice}</p>}
+                {docsLog.length > 1 && (
+                  <div className="docsLog">
+                    {docsLog.slice(1).map((entry, index) => (
+                      <span key={`${entry}-${index}`}>{entry}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </>
   );
 }

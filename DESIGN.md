@@ -13,6 +13,7 @@ colors:
   text-secondary: "#BCC5CA"
   accent: "#70CFBD"
   accent-ink: "#10201D"
+  creative: "#8F85F5"
   recording-danger: "#DB6A78"
   processing-warning: "#C69B4D"
 typography:
@@ -121,11 +122,11 @@ Soft Signal Studio rejects the generic, sterile utility; the neon or gamer inter
 - Recording coral and processing amber reserved for named operational states.
 - Compact 36–40px controls, a 96px application rail, a 48px top bar, and bounded workspaces that preserve scanning speed.
 - State-driven transitions with immediate reduced-motion fallbacks.
-- Energetic, creative detail inside a stable and familiar product vocabulary.
+- Signal Violet used sparingly for brand and creative context inside a stable product vocabulary.
 
 ## 2. Colors
 
-The current palette pairs cool charcoal depth with a soft mint signal and two explicit operational colors. The frontmatter is the canonical record of the renderer today, not a locked redesign target. One-off blue-gray, bright-cyan, green, orange, and translucent literals in the current stylesheet are audit evidence, not reusable color roles.
+The current palette pairs cool charcoal depth with a soft mint signal, a non-semantic Signal Violet accent, and two explicit operational colors. The frontmatter is the canonical record of the renderer today, not a locked redesign target. One-off blue-gray, bright-cyan, green, orange, and translucent literals in the current stylesheet are audit evidence, not reusable color roles.
 
 ### Primary
 
@@ -134,6 +135,7 @@ The current palette pairs cool charcoal depth with a soft mint signal and two ex
 
 ### Secondary
 
+- **Signal Violet** (`{colors.creative}`): Brand and creative context such as the logo field, Docs studio signature, provider-kind icons, and informational toast icon. It never communicates provider selection or operational state.
 - **Recording Coral** (`{colors.recording-danger}`): Active recording, stop actions, destructive emphasis, and error states. Pair it with an icon and explicit label such as “Recording,” “Stop,” or “Error.”
 
 ### Tertiary
@@ -156,7 +158,7 @@ The current palette pairs cool charcoal depth with a soft mint signal and two ex
 
 **The Named State Rule.** Color never carries meaning alone. Every semantic color requires a visible word, icon, progress value, control label, or state description.
 
-**The Deliberate Secondary Accent Rule.** The renderer does not currently define a secondary accent. Visual alternatives may test one compatible accent—including, but never defaulting automatically to, purple—to strengthen energy and creativity. Add it only after its role, AA contrast, separation from semantic states, and behavior across surfaces are validated.
+**The Deliberate Secondary Accent Rule.** Signal Violet supports brand and creative context only. It never represents provider, selection, success, error, warning, recording, or processing state.
 
 ## 3. Typography
 
@@ -182,12 +184,12 @@ The current palette pairs cool charcoal depth with a soft mint signal and two ex
 
 ## 4. Elevation
 
-YaverVoice is tonal and layered by default. Night Slate, Charcoal Surface, Raised Graphite, Quiet Teal Slate, and line strength establish depth without making every group a floating card. The current wide floating shadow on dialogs, popovers, and toasts is an observed implementation detail, not a general elevation token; it must not spread to ordinary panels or buttons. Floating layers may use a structural shadow only after the redesign defines one consistent value.
+YaverVoice is tonal and layered by default. Night Slate, Charcoal Surface, Raised Graphite, Quiet Teal Slate, and line strength establish depth without making every group a floating card. Dialogs, popovers, and toasts share the existing structural floating shadow; it is reserved for genuine overlays and must not spread to ordinary panels or buttons.
 
 ### Shadow Vocabulary
 
 - **Surface Inset:** A faint one-pixel top highlight appears on a limited set of legacy panels. Treat it as optional surface texture, never pair it with a large decorative drop shadow.
-- **Current Floating Layer:** Dialogs, popovers, and toasts currently share a wide dark shadow. Preserve it only while behavior is unchanged; replace it consistently during visual implementation rather than canonizing it component by component.
+- **Floating Layer:** Dialogs, popovers, and toasts share `0 18px 48px rgba(0, 0, 0, 0.34)` over Raised Graphite. It is a floating-only treatment, not a reusable panel or control shadow.
 
 **The Tonal-First Rule.** At-rest panels are flat. Use background level and boundary strength before shadow.
 
@@ -239,17 +241,22 @@ Components are tactile, clear, and controlled. The 36px compact control is the d
 - **Style:** Groq Cloud and Local Whisper are peer choices, never a hidden fallback relationship. Each option includes provider name, processing-location description, selected state, and sufficient target area.
 - **Behavior:** The active provider is communicated by text and selected semantics in addition to color. Local and cloud data handling must remain visible wherever the choice affects user trust.
 
+### Processing Context
+
+- **Files modes:** Transcribe shows the selected transcription provider and location. Create Notes shows both the selected transcription boundary and the separate Groq Cloud notes-generation boundary. Convert shows only FFmpeg media conversion as on-device processing.
+- **Compact context:** Capture and the top bar retain the selected transcription provider without extra visual copy; their accessible name explicitly identifies transcription, provider, and location. Context groups wrap without hiding visible meaning.
+
 ### Progress, Toasts, and Dialogs
 
 - **Progress:** Show a label, numeric percentage when known, track, and semantic outcome. Background progress remains actionable and returns users to the source workflow.
-- **Toasts:** Short operational feedback appears above content without replacing persistent error or readiness information.
-- **Dialogs:** Modal information is reserved for focused provider or dependency explanations. Dialogs require focus containment, Escape handling, focus return, an explicit close control, and reduced-motion behavior; visual styling must not imply those behaviors exist when they have not been implemented.
+- **Toasts:** Short operational feedback appears above content without replacing persistent error or readiness information. Success, error, warning, and info messages pair their unchanged copy with a distinct icon so color is never the only state cue.
+- **Dialogs:** Modal information is reserved for focused provider or dependency explanations. The shared ModalSurface provides initial focus, Tab and Shift+Tab containment, Escape handling, focus return, optional backdrop dismissal, an explicit close control in each consumer, and reduced-motion behavior.
 
 ## 6. Do's and Don'ts
 
 ### Do:
 
-- **Do** begin visual alternatives with the shared root palette, then compare a carefully scoped secondary accent while preserving the fixed product type scale, the 4/6/8/12/16/24 spacing rhythm, and the 6/8/10/12 corner hierarchy.
+- **Do** use Signal Violet only for brand and creative context while preserving the fixed product type scale, the 4/6/8/12/16/24 spacing rhythm, and the 6/8/10/12 corner hierarchy.
 - **Do** keep important controls compact but comfortably targetable: 36px for standard controls, 40px for tabs and category navigation, and 52px for primary rail items.
 - **Do** use Soft Signal Mint for primary action, selection, focus, readiness, completion, and progress—not ambient decoration.
 - **Do** pair every recording, processing, success, warning, local, cloud, and error color with text, an icon, semantics, or a numeric value.
@@ -260,7 +267,7 @@ Components are tactile, clear, and controlled. The 36px compact control is the d
 ### Don't:
 
 - **Don't** make YaverVoice resemble a “generic, sterile utility,” a “neon or gamer interface,” an “over-decorated concept product,” or an “oversized, sparsely populated dashboard.”
-- **Don't** introduce purple or any secondary accent merely because it appears in a logo or feels creative. Palette expansion requires visual comparison, an explicit role, AA validation, and clear separation from existing semantic colors.
+- **Don't** use Signal Violet for provider, selection, success, error, warning, recording, or processing state.
 - **Don't** turn every group into a bordered card, nest cards for layout, or combine a one-pixel border with a wide decorative shadow.
 - **Don't** use colored side-stripe borders, gradient text, decorative glassmorphism, repeating stripe backgrounds, or hand-drawn fallback illustrations.
 - **Don't** repeat tiny uppercase tracked eyebrows or numbered section markers as page scaffolding.

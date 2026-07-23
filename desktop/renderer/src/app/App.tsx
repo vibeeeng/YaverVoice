@@ -7,6 +7,7 @@ import type {
   SidecarLogEntry
 } from "../types/yaverVoice";
 import { ToastViewport } from "../components/ToastViewport";
+import { ProcessingContextBadge } from "../components/ProcessingContextBadge";
 import type {
   CaptureMode,
   FilesMode,
@@ -134,6 +135,7 @@ export default function App() {
             <h1>{workspaces.find((workspace) => workspace.id === activeWorkspace)?.label}</h1>
           </div>
           <div className="topbarActions">
+            <ProcessingContextBadge settings={settings} compact />
             <span className={`connectionStatus ${status}`} role="status">
               <span className="connectionDot" aria-hidden="true" />
               {message}

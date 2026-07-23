@@ -1,5 +1,6 @@
 import type { HistoryItem, Settings } from "../types/yaverVoice";
 import type { FilesMode, ToastMessage } from "../types/ui";
+import { ProcessingContextBadge, type ProcessingContextMode } from "../components/ProcessingContextBadge";
 import { ConverterView } from "./ConverterView";
 import { FileTranscriptionView } from "./FileTranscriptionView";
 import { DocsView } from "./docs/DocsView";
@@ -10,6 +11,15 @@ const modes: Array<{ id: FilesMode; label: string }> = [
   { id: "convert", label: "Convert" }
 ];
 
+const processingContexts: Record<FilesMode, Array<{ mode: ProcessingContextMode; label: string }>> = {
+  transcribe: [{ mode: "transcription", label: "Transcription" }],
+  notes: [
+    { mode: "transcription", label: "Transcription" },
+    { mode: "notes-generation", label: "Notes generation" }
+  ],
+  convert: [{ mode: "media-conversion", label: "Media conversion" }]
+};
+
 export function FilesWorkspace({ mode, onModeChange, settings, onHistory, pushToast }: {
   mode: FilesMode;
   onModeChange: (mode: FilesMode) => void;
@@ -19,7 +29,14 @@ export function FilesWorkspace({ mode, onModeChange, settings, onHistory, pushTo
 }) {
   return (
     <section className="workspace filesWorkspace" aria-labelledby="files-title">
-      <div className="workspaceHeader"><div><span className="eyebrow">MEDIA WORKFLOWS</span><h2 id="files-title">Files</h2></div></div>
+      <div className="workspaceHeader">
+        <h2 id="files-title">Files</h2>
+        <div className="processingContextGroup">
+          {processingContexts[mode].map((context) => (
+            <ProcessingContextBadge key={context.mode} settings={settings} mode={context.mode} label={context.label} />
+          ))}
+        </div>
+      </div>
       <div className="workspaceTabs" role="tablist" aria-label="File workflow">
         {modes.map((item) => <button aria-controls={`files-${item.id}-panel`} aria-selected={mode === item.id} className={mode === item.id ? "active" : ""} key={item.id} onClick={() => onModeChange(item.id)} role="tab" type="button">{item.label}</button>)}
       </div>

@@ -112,7 +112,6 @@ export function HistoryView({
     <section className="workspace libraryWorkspace historyLayout" aria-labelledby="library-title">
       <div className="workspaceHeader libraryHeader">
         <div>
-          <span className="eyebrow">CURRENT SESSION</span>
           <h2 id="library-title">Library</h2>
           <div className="librarySummary">
             <span>{history.length} {history.length === 1 ? "transcript" : "transcripts"}</span>

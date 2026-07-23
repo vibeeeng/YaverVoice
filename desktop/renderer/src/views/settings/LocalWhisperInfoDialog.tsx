@@ -1,5 +1,6 @@
 import { Info, X } from "lucide-react";
 
+import { ModalSurface } from "../../components/ModalSurface";
 import type { LocalInfoLanguage } from "../../types/ui";
 import type { LocalInfoCopy } from "./localWhisperInfo";
 
@@ -15,8 +16,7 @@ export function LocalWhisperInfoDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="modalBackdrop" role="presentation" onClick={onClose}>
-      <section className="localInfoDialog" aria-labelledby="local-info-title" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+    <ModalSurface labelledBy="local-info-title" className="localInfoDialog" onClose={onClose} closeOnBackdrop>
         <div className="localInfoHeader">
           <div className="localInfoTitle">
             <span className="infoIcon"><Info size={18} /></span>
@@ -78,7 +78,6 @@ export function LocalWhisperInfoDialog({
         <div className="localInfoFooter">
           <button className="primaryButton" type="button" onClick={onClose}>{info.close}</button>
         </div>
-      </section>
-    </div>
+    </ModalSurface>
   );
 }

@@ -1,5 +1,7 @@
 import { Info, X } from "lucide-react";
 
+import { ModalSurface } from "../../components/ModalSurface";
+
 export function RnnoiseInfoDialog({
   managedModelDir,
   onClose
@@ -8,8 +10,7 @@ export function RnnoiseInfoDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="modalBackdrop" role="presentation" onClick={onClose}>
-      <section className="localInfoDialog rnnoiseInfoDialog" aria-labelledby="rnnoise-info-title" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+    <ModalSurface labelledBy="rnnoise-info-title" className="localInfoDialog rnnoiseInfoDialog" onClose={onClose} closeOnBackdrop>
         <div className="localInfoHeader">
           <div className="localInfoTitle">
             <span className="infoIcon"><Info size={18} /></span>
@@ -46,7 +47,6 @@ export function RnnoiseInfoDialog({
         <div className="localInfoFooter">
           <button className="primaryButton" type="button" onClick={onClose}>Close</button>
         </div>
-      </section>
-    </div>
+    </ModalSurface>
   );
 }

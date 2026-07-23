@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Clipboard, Languages, Volume2, Wand2 } from "lucide-react";
+import { Check, Clipboard, Cloud, HardDrive, Languages, Volume2, Wand2 } from "lucide-react";
 
 import { Toggle } from "../../components/Toggle";
 import type { FfmpegStatus, MicrophoneDevice, Settings } from "../../types/yaverVoice";
@@ -238,7 +238,7 @@ export function SettingsView({
     <>
       <section className="workspace settingsWorkspace" aria-labelledby="settings-title">
         <div className="workspaceHeader">
-          <div><span className="eyebrow">PREFERENCES</span><h2 id="settings-title">Settings</h2></div>
+          <h2 id="settings-title">Settings</h2>
         </div>
         <div className="settingsLayout">
           <nav className="settingsCategoryNav" aria-label="Settings categories">
@@ -271,8 +271,12 @@ export function SettingsView({
                     type="button"
                     onClick={() => changeAndSave({ transcription_provider: "groq" }, { transcription_provider: "groq" }, "Transcription engine updated")}
                   >
-                    <strong>Groq Cloud</strong>
+                    <span className="providerChoiceHeader">
+                      <Cloud size={18} aria-hidden="true" />
+                      <strong>Groq Cloud</strong>
+                    </span>
                     <span>Cloud transcription with your API key.</span>
+                    <small className="providerLocation">Selected audio is sent to Groq for transcription.</small>
                   </button>
                   <button
                     aria-pressed={providerIsLocal}
@@ -280,8 +284,12 @@ export function SettingsView({
                     type="button"
                     onClick={() => changeAndSave({ transcription_provider: "local" }, { transcription_provider: "local" }, "Transcription engine updated")}
                   >
-                    <strong>Local Whisper</strong>
+                    <span className="providerChoiceHeader">
+                      <HardDrive size={18} aria-hidden="true" />
+                      <strong>Local Whisper</strong>
+                    </span>
                     <span>On-device transcription using the prepared model.</span>
+                    <small className="providerLocation">Audio is processed locally on this device.</small>
                   </button>
                 </div>
               </div>
