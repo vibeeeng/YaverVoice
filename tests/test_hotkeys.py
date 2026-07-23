@@ -166,7 +166,10 @@ class HotkeyControllerTests(unittest.TestCase):
         self.assertIsNone(error)
 
     def test_hotkey_start_returns_platform_capability_error_before_listener(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "src.core.hotkeys.keyboard",
+            object(),
+        ):
             controller, _service = self.make_controller([])
             controller.platform = UnsupportedHotkeyPlatform()  # type: ignore[assignment]
             status = controller.start()
