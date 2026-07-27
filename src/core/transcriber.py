@@ -679,15 +679,52 @@ class LocalWhisperTranscriber:
 
             completed = threading.Event()
             download_error: list[Exception] = []
+            progress_lock = threading.Lock()
+            huggingface_transferred_bytes = 0
+            huggingface_downloaded_bytes = 0
 
             def download_worker() -> None:
                 try:
-                    from faster_whisper.utils import download_model
+                    from huggingface_hub import snapshot_download
+                    from tqdm.auto import tqdm
 
-                    download_model(
-                        model_name,
-                        output_dir=str(model_dir),
+                    class DownloadProgress(tqdm):
+                        def __init__(self, *args, **kwargs):
+                            name = kwargs.pop("name", None)
+                            description = str(kwargs.get("desc", ""))
+                            if (
+                                name == "huggingface_hub.snapshot_download.transfer"
+                                or description == "Downloading bytes"
+                            ):
+                                self._progress_kind = "transfer"
+                            elif (
+                                name == "huggingface_hub.snapshot_download"
+                                or description.startswith("Reconstructing")
+                            ):
+                                self._progress_kind = "reconstruction"
+                            else:
+                                self._progress_kind = None
+                            kwargs["disable"] = True
+                            super().__init__(*args, **kwargs)
+
+                        def update(self, n=1):
+                            nonlocal huggingface_downloaded_bytes, huggingface_transferred_bytes
+                            result = super().update(n)
+                            increment = max(0, int(n or 0))
+                            if self._progress_kind and increment:
+                                with progress_lock:
+                                    if self._progress_kind == "transfer":
+                                        huggingface_transferred_bytes += increment
+                                    else:
+                                        huggingface_downloaded_bytes += increment
+                            return result
+
+                    snapshot_download(
+                        setup_info["repository"],
+                        local_dir=str(model_dir),
                         local_files_only=False,
+                        allow_patterns=list(cls.DOWNLOAD_FILE_PATTERNS),
+                        tqdm_class=DownloadProgress,
                     )
                 except Exception as exc:
                     download_error.append(exc)
@@ -701,12 +738,20 @@ class LocalWhisperTranscriber:
             ).start()
 
             while not completed.wait(cls.PROGRESS_INTERVAL_SECONDS):
+                with progress_lock:
+                    reported_downloaded_bytes = max(
+                        huggingface_transferred_bytes,
+                        huggingface_downloaded_bytes,
+                    )
                 cls._emit_setup_progress(
                     progress_callback,
                     state="downloading",
                     model=model_name,
                     model_dir=model_dir,
-                    downloaded_bytes=cls._downloaded_payload_bytes(model_dir),
+                    downloaded_bytes=max(
+                        reported_downloaded_bytes,
+                        cls._downloaded_payload_bytes(model_dir),
+                    ),
                     total_bytes=total_bytes,
                     message="Downloading local model...",
                 )

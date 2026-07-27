@@ -75,6 +75,17 @@ class LocalTranslateModelTests(unittest.TestCase):
                 )
 
         module.HfApi = FakeHfApi
+
+        def snapshot_download(repo_id, **kwargs):
+            from faster_whisper.utils import download_model
+
+            return download_model(
+                repo_id,
+                output_dir=kwargs["local_dir"],
+                local_files_only=kwargs.get("local_files_only", False),
+            )
+
+        module.snapshot_download = snapshot_download
         return module
 
     def test_local_setup_info_reports_allowlisted_source_size_and_destination(self):
@@ -150,6 +161,75 @@ class LocalTranslateModelTests(unittest.TestCase):
         self.assertTrue(all(event["total_bytes"] == 120 for event in downloading))
         self.assertEqual(events[-1]["state"], "complete")
         self.assertEqual(events[-1]["percent"], 100.0)
+
+    def test_prepare_model_uses_huggingface_transfer_progress_before_xet_reconstruction(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ), patch.object(
+            LocalWhisperTranscriber,
+            "resolve_model_dir",
+            side_effect=lambda config, model, allow_cache=True: (
+                config.get_local_whisper_model_dir(model),
+                "managed",
+            ),
+        ):
+            config = self.make_config(temp_dir, profile="balanced", translate=False)
+            events = []
+            huggingface_module = self.make_huggingface_module(
+                [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
+            )
+
+            def fake_snapshot_download(_repository, **kwargs):
+                transfer_progress = kwargs["tqdm_class"](
+                    total=0,
+                    name="huggingface_hub.snapshot_download.transfer",
+                    desc="Downloading bytes",
+                )
+                reconstruction_progress = kwargs["tqdm_class"](
+                    total=0,
+                    name="huggingface_hub.snapshot_download",
+                    desc="Reconstructing model files",
+                )
+                transfer_progress.update(30)
+                time.sleep(0.04)
+                transfer_progress.update(30)
+                time.sleep(0.04)
+                reconstruction_progress.update(120)
+                self.make_ready_model_dir(Path(kwargs["local_dir"]))
+                transfer_progress.close()
+                reconstruction_progress.close()
+                return kwargs["local_dir"]
+
+            huggingface_module.snapshot_download = fake_snapshot_download
+            utils_module = types.ModuleType("faster_whisper.utils")
+
+            def fake_download_model(_model_name, **kwargs):
+                time.sleep(0.1)
+                self.make_ready_model_dir(Path(kwargs["output_dir"]))
+                return kwargs["output_dir"]
+
+            utils_module.download_model = fake_download_model
+            faster_whisper_module = types.ModuleType("faster_whisper")
+            faster_whisper_module.utils = utils_module
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "faster_whisper": faster_whisper_module,
+                    "faster_whisper.utils": utils_module,
+                    "huggingface_hub": huggingface_module,
+                },
+            ), patch.object(LocalWhisperTranscriber, "PROGRESS_INTERVAL_SECONDS", 0.01):
+                result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
+
+        downloading_bytes = [
+            event["downloaded_bytes"]
+            for event in events
+            if event["state"] == "downloading"
+        ]
+        self.assertEqual(result["status"], "ready")
+        self.assertIn(30, downloading_bytes)
+        self.assertIn(60, downloading_bytes)
 
     def test_prepare_model_rejects_incomplete_download_result(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
