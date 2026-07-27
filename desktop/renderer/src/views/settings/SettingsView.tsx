@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clipboard, Cloud, HardDrive, Languages, Volume2, Wand2 } from "lucide-react";
 
 import { Toggle } from "../../components/Toggle";
-import type { FfmpegStatus, MicrophoneDevice, Settings } from "../../types/yaverVoice";
+import type { FfmpegStatus, LocalWhisperProgress, LocalWhisperSetupInfo, MicrophoneDevice, Settings } from "../../types/yaverVoice";
 import type { LocalInfoLanguage, ToastMessage } from "../../types/ui";
 import { formatHotkeyDisplay, hotkeyFromKeyboardEvent } from "../../utils/hotkeys";
 import { LocalWhisperInfoDialog } from "./LocalWhisperInfoDialog";
+import { LocalWhisperSetupDialog, type LocalWhisperSetupPhase } from "./LocalWhisperSetupDialog";
 import { RnnoiseInfoDialog } from "./RnnoiseInfoDialog";
 import { localWhisperInfoCopy } from "./localWhisperInfo";
 
@@ -38,6 +39,11 @@ export function SettingsView({
   const [capturedHotkey, setCapturedHotkey] = useState("");
   const [localAdvancedOpen, setLocalAdvancedOpen] = useState(false);
   const [localInfoOpen, setLocalInfoOpen] = useState(false);
+  const [localSetupPhase, setLocalSetupPhase] = useState<LocalWhisperSetupPhase | null>(null);
+  const [localSetupInfo, setLocalSetupInfo] = useState<LocalWhisperSetupInfo | null>(null);
+  const [localSetupProgress, setLocalSetupProgress] = useState<LocalWhisperProgress | null>(null);
+  const [localSetupError, setLocalSetupError] = useState("");
+  const localSetupRequestRef = useRef(0);
   const [rnnoiseInfoOpen, setRnnoiseInfoOpen] = useState(false);
   const [localInfoLanguage, setLocalInfoLanguage] = useState<LocalInfoLanguage>("tr");
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>("transcription");
@@ -71,6 +77,24 @@ export function SettingsView({
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [hotkeyCapture]);
+
+  useEffect(() => {
+    return window.yaverVoice.onSidecarEvent((event) => {
+      if (event.method !== "settings.local_whisper_progress") return;
+      const progress = event.params as LocalWhisperProgress;
+      setLocalSetupProgress(progress);
+      if (progress.state === "preparing" || progress.state === "downloading") {
+        setLocalSetupPhase("downloading");
+      } else if (progress.state === "verifying") {
+        setLocalSetupPhase("verifying");
+      } else if (progress.state === "complete") {
+        setLocalSetupPhase("complete");
+      } else if (progress.state === "error") {
+        setLocalSetupError(progress.message);
+        setLocalSetupPhase("error");
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!localInfoOpen && !rnnoiseInfoOpen) {
@@ -149,17 +173,74 @@ export function SettingsView({
     }
   };
 
-  const prepareLocalModel = async () => {
+  const openLocalModelSetup = async () => {
+    const requestId = ++localSetupRequestRef.current;
+    setLocalSetupPhase("loading");
+    setLocalSetupInfo(null);
+    setLocalSetupProgress(null);
+    setLocalSetupError("");
     try {
-      setNotice("Preparing local model...");
-      await window.yaverVoice.settings.prepareLocalWhisperModel();
+      const info = await window.yaverVoice.settings.getLocalWhisperSetupInfo();
+      if (requestId !== localSetupRequestRef.current) return;
+      if (info.already_ready) {
+        const nextSettings = await window.yaverVoice.settings.get();
+        if (requestId !== localSetupRequestRef.current) return;
+        onSettings(nextSettings);
+        setDraft(nextSettings);
+        setLocalSetupPhase(null);
+        return;
+      }
+      setLocalSetupInfo(info);
+      setLocalSetupPhase("confirm");
+    } catch (error) {
+      if (requestId !== localSetupRequestRef.current) return;
+      const text = error instanceof Error ? error.message : "Local model details could not be loaded.";
+      setLocalSetupError(text);
+      setLocalSetupPhase("error");
+      pushToast(text, "error");
+    }
+  };
+
+  const closeLocalModelSetup = () => {
+    localSetupRequestRef.current += 1;
+    setLocalSetupPhase(null);
+  };
+
+  const prepareLocalModel = async () => {
+    if (!localSetupInfo || localSetupPhase === "downloading" || localSetupPhase === "verifying") return;
+    setLocalSetupPhase("downloading");
+    setLocalSetupProgress({
+      state: "preparing",
+      model: localSetupInfo.model,
+      downloaded_bytes: 0,
+      total_bytes: localSetupInfo.total_bytes,
+      percent: 0,
+      model_dir: localSetupInfo.model_dir,
+      message: "Preparing local model download..."
+    });
+    setLocalSetupError("");
+    try {
+      const result = await window.yaverVoice.settings.prepareLocalWhisperModel();
       const nextSettings = await window.yaverVoice.settings.get();
       onSettings(nextSettings);
-      setNotice("Local model is ready.");
-      pushToast("Local model is ready", "success");
+      setDraft(nextSettings);
+      if (result.status === "ready" && result.transcription_ready === true) {
+        setLocalSetupPhase("complete");
+        setNotice(result.message ?? "Local model is ready.");
+        pushToast(result.message ?? "Local model is ready", "success");
+      } else {
+        const text = result.message ?? "Local model setup failed.";
+        setLocalSetupError(text);
+        setLocalSetupPhase("error");
+        setNotice(text);
+        pushToast(text, "error");
+      }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Local model setup failed.");
-      pushToast(error instanceof Error ? error.message : "Local model setup failed.", "error");
+      const text = error instanceof Error ? error.message : "Local model setup failed.";
+      setLocalSetupError(text);
+      setLocalSetupPhase("error");
+      setNotice(text);
+      pushToast(text, "error");
     }
   };
 
@@ -200,12 +281,14 @@ export function SettingsView({
   const localStatusState = typeof localStatus?.status === "string" ? localStatus.status : "missing";
   const localReady = localStatusState === "ready" || localStatus?.transcription_ready === true;
   const localDependencyMissing = localStatus?.dependency_available === false;
+  const localSetupBusy = localSetupPhase === "loading" || localSetupPhase === "downloading" || localSetupPhase === "verifying";
   const localStatusMessage = typeof localStatus?.message === "string"
     ? localStatus.message
     : localReady
       ? "Local model is ready."
       : "Use Set up local mode before local transcription.";
   const localModelSource = localStatus?.model_source === "cache" ? "cache" : "app data";
+  const localModelDirectory = localStatus?.model_dir ?? localStatus?.managed_model_dir;
   const apiKeyDisplayValue = apiKey || (!apiKeyEditing && draft.api_key_exists ? "**********" : "");
   const localInfo = localWhisperInfoCopy[localInfoLanguage];
   const audioCleanupStatus = draft.audio_cleanup_status;
@@ -354,10 +437,21 @@ export function SettingsView({
                     <p className={localReady ? "statusText successText" : localStatusState === "error" ? "statusText errorText" : "statusText"}>
                       {localReady ? "Ready" : localDependencyMissing ? "Package missing" : "Not ready"} - {localStatusMessage}
                     </p>
-                    <button className="secondaryButton compactButton" type="button" onClick={() => void prepareLocalModel()} disabled={localReady}>
+                    <button
+                      className="secondaryButton compactButton"
+                      type="button"
+                      onClick={() => localDependencyMissing ? setLocalInfoOpen(true) : void openLocalModelSetup()}
+                      disabled={localReady || localSetupBusy}
+                    >
                       {localReady ? "Ready" : localDependencyMissing ? "Setup info" : "Set Up Local Mode"}
                     </button>
                   </div>
+                  {localModelDirectory && (
+                    <div className="localModelDirectory">
+                      <span>{localReady ? `Current model folder (${localModelSource})` : "Download folder"}</span>
+                      <code>{localModelDirectory}</code>
+                    </div>
+                  )}
                   <button className="linkButton" type="button" onClick={() => setLocalAdvancedOpen((current) => !current)}>
                     {localAdvancedOpen ? "Hide advanced local settings" : "Advanced local settings"}
                   </button>
@@ -472,6 +566,17 @@ export function SettingsView({
           language={localInfoLanguage}
           onLanguageChange={setLocalInfoLanguage}
           onClose={() => setLocalInfoOpen(false)}
+        />
+      )}
+      {localSetupPhase && (
+        <LocalWhisperSetupDialog
+          error={localSetupError}
+          info={localSetupInfo}
+          onClose={closeLocalModelSetup}
+          onConfirm={() => void prepareLocalModel()}
+          onRetry={() => void openLocalModelSetup()}
+          phase={localSetupPhase}
+          progress={localSetupProgress}
         />
       )}
       {rnnoiseInfoOpen && (

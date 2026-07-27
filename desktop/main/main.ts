@@ -241,6 +241,7 @@ const mainSidecarMethods = new Set<string>([
   "settings.get",
   "settings.save",
   "settings.save_hotkeys",
+  "settings.get_local_whisper_setup_info",
   "settings.get_local_whisper_status",
   "settings.prepare_local_whisper_model",
   "hotkeys.status",

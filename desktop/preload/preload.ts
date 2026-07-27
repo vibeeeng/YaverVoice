@@ -20,6 +20,7 @@ const api = {
     get: () => invoke("settings.get"),
     save: (params: Record<string, unknown>) => invoke("settings.save", params),
     saveHotkeys: (params: Record<string, unknown>) => invoke("settings.save_hotkeys", params),
+    getLocalWhisperSetupInfo: () => invoke("settings.get_local_whisper_setup_info"),
     getLocalWhisperStatus: () => invoke("settings.get_local_whisper_status"),
     prepareLocalWhisperModel: () => invoke("settings.prepare_local_whisper_model"),
     installRnnoiseModel: () => ipcRenderer.invoke("yavervoice:select-rnnoise-model")

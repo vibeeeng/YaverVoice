@@ -147,6 +147,9 @@ class SidecarJsonRpcServer:
         if method == "settings.get_local_whisper_status":
             self._require_no_params(params)
             return self.service.get_local_whisper_status()
+        if method == "settings.get_local_whisper_setup_info":
+            self._require_no_params(params)
+            return self.service.get_local_whisper_setup_info()
         if method == "settings.prepare_local_whisper_model":
             self._require_no_params(params)
             return self.service.prepare_local_whisper_model()
@@ -259,10 +262,11 @@ class SidecarJsonRpcServer:
             "params": params,
         }
         with self._event_lock:
-            if self._collecting_events or self._event_writer is None:
+            if self._event_writer is None:
                 self._pending_events.append(event)
                 return
-        self._event_writer(event)
+            event_writer = self._event_writer
+        event_writer(event)
 
     def _queue_hotkey_status(self, payload: dict[str, Any]) -> None:
         if self._hotkey_status_events_enabled:

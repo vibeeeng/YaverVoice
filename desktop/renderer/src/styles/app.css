@@ -1105,6 +1105,166 @@ textarea:focus-visible,
   text-align: right;
 }
 
+.localSetupDialog {
+  width: min(540px, 100%);
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  animation: dialogIn var(--duration-standard) var(--ease-responsive);
+}
+
+.localSetupHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.localSetupHeading h3 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.localSetupIcon {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--processing);
+}
+
+.localSetupEyebrow {
+  color: var(--processing);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.localSetupLead {
+  margin: 16px 0;
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.localSetupDetails {
+  display: grid;
+  gap: 1px;
+  margin: 0 0 14px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--line);
+}
+
+.localSetupDetails div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.localSetupDetails dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.localSetupDetails dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.localSetupPath {
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.localSetupPath span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.localSetupPath code,
+.localModelDirectory code {
+  color: var(--processing);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.localSetupDialog .progressBlock {
+  max-width: none;
+  margin-top: 20px;
+  gap: 8px;
+}
+
+.localSetupByteRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+
+.localSetupByteRow strong {
+  color: var(--text);
+}
+
+.localSetupByteRow div {
+  display: grid;
+  gap: 2px;
+}
+
+.localSetupByteRow small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.localSetupError {
+  margin: 16px 0 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: rgba(239, 91, 112, 0.1);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.localSetupActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.localModelDirectory {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.localModelDirectory span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 label {
   display: flex;
   flex-direction: column;

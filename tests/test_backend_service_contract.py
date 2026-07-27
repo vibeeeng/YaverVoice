@@ -48,6 +48,7 @@ EXPECTED_JSON_RPC_METHODS = frozenset(
         "recording.status",
         "recording.toggle",
         "settings.get",
+        "settings.get_local_whisper_setup_info",
         "settings.get_local_whisper_status",
         "settings.install_rnnoise_model",
         "settings.prepare_local_whisper_model",
@@ -72,6 +73,7 @@ EXPECTED_SERVICE_SIGNATURES = {
     "docs_model_profiles": "self",
     "docs_preflight": "self, token, model=None, detail=None, output_language=None",
     "get_config": "self",
+    "get_local_whisper_setup_info": "self",
     "get_local_whisper_status": "self",
     "get_microphones": "self",
     "get_recommended_microphone": "self",
@@ -105,6 +107,7 @@ EXPECTED_EVENT_NAMES = frozenset(
         "quick.status",
         "recording.state",
         "settings.changed",
+        "settings.local_whisper_progress",
         "split.progress",
         "split.step",
         "toast",
@@ -116,6 +119,7 @@ EXPECTED_BRIDGE_SURFACE = {
     "settings": frozenset(
         {
             "get",
+            "getLocalWhisperSetupInfo",
             "getLocalWhisperStatus",
             "installRnnoiseModel",
             "prepareLocalWhisperModel",
@@ -180,6 +184,7 @@ R0_BACKEND_METHODS_IN_FACADE = frozenset(
         "get_config",
         "save_settings",
         "get_audio_cleanup_status",
+        "get_local_whisper_setup_info",
         "install_rnnoise_model",
         "_coerce_audio_cleanup_mode",
         "save_hotkeys",
@@ -541,6 +546,26 @@ class BackendServiceContractTests(unittest.TestCase):
         )
         self.assertEqual(preload, EXPECTED_BRIDGE_SURFACE)
         self.assertEqual(renderer, EXPECTED_BRIDGE_SURFACE)
+
+    def test_local_whisper_setup_ui_requires_confirmation_and_shows_real_bytes(self):
+        dialog_path = ROOT / "desktop" / "renderer" / "src" / "views" / "settings" / "LocalWhisperSetupDialog.tsx"
+        self.assertTrue(dialog_path.exists())
+        dialog = dialog_path.read_text(encoding="utf-8")
+        settings_view = (ROOT / "desktop" / "renderer" / "src" / "views" / "settings" / "SettingsView.tsx").read_text(
+            encoding="utf-8"
+        )
+        main = (ROOT / "desktop" / "main" / "main.ts").read_text(encoding="utf-8")
+        preload = (ROOT / "desktop" / "preload" / "preload.ts").read_text(encoding="utf-8")
+
+        self.assertIn("Download local model?", dialog)
+        self.assertIn('role="progressbar"', dialog)
+        self.assertIn("downloadedBytes", dialog)
+        self.assertIn("totalBytes", dialog)
+        self.assertIn("modelDir", dialog)
+        self.assertIn("getLocalWhisperSetupInfo", settings_view)
+        self.assertIn("prepareLocalWhisperModel", settings_view)
+        self.assertIn('"settings.get_local_whisper_setup_info"', main)
+        self.assertIn('"settings.get_local_whisper_setup_info"', preload)
 
     def test_r0_renderer_components_remain_owned(self):
         missing = frozenset(R0_RENDERER_COMPONENTS_IN_MAIN) - _renderer_component_names()

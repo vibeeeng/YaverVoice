@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+import time
 import types
 import unittest
 from pathlib import Path
@@ -56,6 +57,190 @@ class LocalTranslateModelTests(unittest.TestCase):
         config = Config(str(env_path))
         config.reload_env()
         return config
+
+    @staticmethod
+    def make_huggingface_module(files: list[tuple[str, int]]) -> types.ModuleType:
+        module = types.ModuleType("huggingface_hub")
+
+        class FakeHfApi:
+            def model_info(self, repo_id, *, files_metadata=False):
+                if not files_metadata:
+                    raise AssertionError("Local setup metadata must request file sizes")
+                return SimpleNamespace(
+                    id=repo_id,
+                    siblings=[
+                        SimpleNamespace(rfilename=filename, size=size)
+                        for filename, size in files
+                    ],
+                )
+
+        module.HfApi = FakeHfApi
+        return module
+
+    def test_local_setup_info_reports_allowlisted_source_size_and_destination(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            config = self.make_config(temp_dir, profile="quality", translate=False)
+            huggingface_module = self.make_huggingface_module(
+                [
+                    ("config.json", 20),
+                    ("model.bin", 1000),
+                    ("tokenizer.json", 30),
+                    ("vocabulary.json", 40),
+                    ("README.md", 9999),
+                ]
+            )
+
+            with patch.dict(sys.modules, {"huggingface_hub": huggingface_module}):
+                info = LocalWhisperTranscriber.get_setup_info(config)
+
+        self.assertEqual(info["display_name"], "Quality Turbo")
+        self.assertEqual(info["repository"], "deepdml/faster-whisper-large-v3-turbo-ct2")
+        self.assertEqual(
+            info["source_url"],
+            "https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2",
+        )
+        self.assertEqual(info["total_bytes"], 1090)
+        self.assertEqual(
+            info["model_dir"],
+            str(Path(temp_dir) / "models" / "whisper-deepdml-faster-whisper-large-v3-turbo-ct2"),
+        )
+        self.assertFalse(info["already_ready"])
+
+    def test_prepare_model_emits_real_downloaded_bytes_and_verifies_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            config = self.make_config(temp_dir, profile="balanced", translate=False)
+            events = []
+            huggingface_module = self.make_huggingface_module(
+                [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
+            )
+            utils_module = types.ModuleType("faster_whisper.utils")
+
+            def fake_download_model(_model_name, **kwargs):
+                model_dir = Path(kwargs["output_dir"])
+                partial_dir = model_dir / ".cache" / "huggingface" / "download"
+                partial_dir.mkdir(parents=True, exist_ok=True)
+                (partial_dir / "model.bin.incomplete").write_bytes(b"x" * 60)
+                time.sleep(0.08)
+                self.make_ready_model_dir(model_dir)
+                return str(model_dir)
+
+            utils_module.download_model = fake_download_model
+            faster_whisper_module = types.ModuleType("faster_whisper")
+            faster_whisper_module.utils = utils_module
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "faster_whisper": faster_whisper_module,
+                    "faster_whisper.utils": utils_module,
+                    "huggingface_hub": huggingface_module,
+                },
+            ), patch.object(LocalWhisperTranscriber, "PROGRESS_INTERVAL_SECONDS", 0.01):
+                result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
+
+        downloading = [event for event in events if event["state"] == "downloading"]
+        self.assertEqual(result["status"], "ready")
+        self.assertTrue(result["transcription_ready"])
+        self.assertTrue(downloading)
+        self.assertTrue(any(event["downloaded_bytes"] >= 60 for event in downloading))
+        self.assertTrue(all(event["total_bytes"] == 120 for event in downloading))
+        self.assertEqual(events[-1]["state"], "complete")
+        self.assertEqual(events[-1]["percent"], 100.0)
+
+    def test_prepare_model_rejects_incomplete_download_result(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            config = self.make_config(temp_dir, profile="fast", translate=False)
+            huggingface_module = self.make_huggingface_module(
+                [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
+            )
+            utils_module = types.ModuleType("faster_whisper.utils")
+            utils_module.download_model = lambda _model_name, **kwargs: kwargs["output_dir"]
+            faster_whisper_module = types.ModuleType("faster_whisper")
+            faster_whisper_module.utils = utils_module
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "faster_whisper": faster_whisper_module,
+                    "faster_whisper.utils": utils_module,
+                    "huggingface_hub": huggingface_module,
+                },
+            ):
+                result = LocalWhisperTranscriber.prepare_model(config)
+
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(result["transcription_ready"])
+        self.assertIn("incomplete", result["message"].lower())
+
+    def test_model_files_ready_rejects_empty_required_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_dir = Path(temp_dir)
+            for name in ("model.bin", "config.json", "tokenizer.json"):
+                (model_dir / name).touch()
+
+            self.assertFalse(LocalWhisperTranscriber._model_files_ready(model_dir))
+
+    def test_prepare_model_rejects_duplicate_setup_without_downloading(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ), patch.object(LocalWhisperTranscriber, "dependency_error", return_value=None), patch.object(
+            LocalWhisperTranscriber,
+            "resolve_model_dir",
+            side_effect=lambda config, model, allow_cache=True: (
+                config.get_local_whisper_model_dir(model),
+                "managed",
+            ),
+        ):
+            config = self.make_config(temp_dir, profile="balanced", translate=False)
+            acquired = LocalWhisperTranscriber._prepare_lock.acquire(blocking=False)
+            self.assertTrue(acquired)
+            try:
+                result = LocalWhisperTranscriber.prepare_model(config)
+            finally:
+                LocalWhisperTranscriber._prepare_lock.release()
+
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(result["transcription_ready"])
+        self.assertIn("already in progress", result["message"])
+
+    def test_prepare_model_reports_download_failure(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            config = self.make_config(temp_dir, profile="fast", translate=False)
+            events = []
+            huggingface_module = self.make_huggingface_module(
+                [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
+            )
+            utils_module = types.ModuleType("faster_whisper.utils")
+
+            def fail_download(_model_name, **_kwargs):
+                raise OSError("disk full")
+
+            utils_module.download_model = fail_download
+            faster_whisper_module = types.ModuleType("faster_whisper")
+            faster_whisper_module.utils = utils_module
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "faster_whisper": faster_whisper_module,
+                    "faster_whisper.utils": utils_module,
+                    "huggingface_hub": huggingface_module,
+                },
+            ):
+                result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
+
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(result["transcription_ready"])
+        self.assertIn("disk full", result["message"])
+        self.assertEqual(events[-1]["state"], "error")
 
     def test_quality_transcription_uses_turbo_model(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
@@ -178,9 +363,19 @@ class LocalTranslateModelTests(unittest.TestCase):
             utils_module.download_model = fake_download_model
             faster_whisper_module = types.ModuleType("faster_whisper")
             faster_whisper_module.utils = utils_module
+            huggingface_module = self.make_huggingface_module(
+                [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
+            )
             config = self.make_config(temp_dir, profile="balanced", translate=False)
 
-            with patch.dict(sys.modules, {"faster_whisper": faster_whisper_module, "faster_whisper.utils": utils_module}):
+            with patch.dict(
+                sys.modules,
+                {
+                    "faster_whisper": faster_whisper_module,
+                    "faster_whisper.utils": utils_module,
+                    "huggingface_hub": huggingface_module,
+                },
+            ):
                 status = LocalWhisperTranscriber.prepare_model(config)
 
             expected_dir = Path(temp_dir) / "yavervoice" / "models" / "whisper-small"

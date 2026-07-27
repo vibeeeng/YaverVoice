@@ -5,10 +5,12 @@ Uses whisper-large-v3-turbo model for low-latency transcription.
 
 import os
 import sys
+import threading
 import time
 import wave
+from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Callable, Optional, Protocol
 from groq import Groq
 import numpy as np
 
@@ -475,6 +477,29 @@ class LocalWhisperTranscriber:
     """Transcribes audio files locally with faster-whisper."""
 
     DEFAULT_BEAM_SIZE = 5
+    PROGRESS_INTERVAL_SECONDS = 0.25
+    DOWNLOAD_FILE_PATTERNS = (
+        "config.json",
+        "preprocessor_config.json",
+        "model.bin",
+        "tokenizer.json",
+        "vocabulary.*",
+    )
+    MODEL_REPOSITORIES = {
+        "tiny": "Systran/faster-whisper-tiny",
+        "base": "Systran/faster-whisper-base",
+        "small": "Systran/faster-whisper-small",
+        "deepdml/faster-whisper-large-v3-turbo-ct2": "deepdml/faster-whisper-large-v3-turbo-ct2",
+        "large-v3-turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+        "large-v3": "Systran/faster-whisper-large-v3",
+    }
+    PROFILE_DISPLAY_NAMES = {
+        "fast": "Fast",
+        "balanced": "Balanced",
+        "quality": "Quality Turbo",
+        "high_quality": "High Quality",
+    }
+    _prepare_lock = threading.Lock()
 
     def __init__(
         self,
@@ -562,7 +587,48 @@ class LocalWhisperTranscriber:
         }
 
     @classmethod
-    def prepare_model(cls, config: Optional[Config] = None) -> dict:
+    def get_setup_info(cls, config: Optional[Config] = None) -> dict:
+        """Return trusted remote model metadata without downloading model files."""
+        config = config or Config()
+        dependency_error = cls.dependency_error()
+        if dependency_error:
+            raise RuntimeError(dependency_error)
+
+        model_name = config.get_local_whisper_model()
+        repository = cls.MODEL_REPOSITORIES.get(model_name)
+        if not repository:
+            raise ValueError(f"Unsupported Local Whisper model: {model_name}")
+
+        from huggingface_hub import HfApi
+
+        model_info = HfApi().model_info(repository, files_metadata=True)
+        total_bytes = sum(
+            int(sibling.size)
+            for sibling in (model_info.siblings or [])
+            if sibling.size is not None
+            and any(fnmatchcase(sibling.rfilename, pattern) for pattern in cls.DOWNLOAD_FILE_PATTERNS)
+        )
+        if total_bytes <= 0:
+            raise RuntimeError("Local model download size could not be determined.")
+
+        model_dir, _source = cls.resolve_model_dir(config, model_name, allow_cache=True)
+        return {
+            "profile": config.get_local_whisper_profile(),
+            "model": model_name,
+            "display_name": cls.PROFILE_DISPLAY_NAMES[config.get_local_whisper_profile()],
+            "repository": repository,
+            "source_url": f"https://huggingface.co/{repository}",
+            "total_bytes": total_bytes,
+            "model_dir": str(config.get_local_whisper_model_dir(model_name)),
+            "already_ready": cls._model_files_ready(model_dir),
+        }
+
+    @classmethod
+    def prepare_model(
+        cls,
+        config: Optional[Config] = None,
+        progress_callback: Optional[Callable[[dict], None]] = None,
+    ) -> dict:
         """Download the configured local faster-whisper model if needed."""
         config = config or Config()
         dependency_error = cls.dependency_error()
@@ -591,13 +657,84 @@ class LocalWhisperTranscriber:
                 "message": "Local mode is already ready.",
             }
 
-        try:
-            from faster_whisper.utils import download_model
+        if not cls._prepare_lock.acquire(blocking=False):
+            return {
+                **cls.get_status(config),
+                "status": "error",
+                "message": "Local mode setup is already in progress.",
+            }
 
-            download_model(
-                model_name,
-                output_dir=str(model_dir),
-                local_files_only=False,
+        try:
+            setup_info = cls.get_setup_info(config)
+            total_bytes = int(setup_info["total_bytes"])
+            cls._emit_setup_progress(
+                progress_callback,
+                state="preparing",
+                model=model_name,
+                model_dir=model_dir,
+                downloaded_bytes=cls._downloaded_payload_bytes(model_dir),
+                total_bytes=total_bytes,
+                message="Preparing local model download...",
+            )
+
+            completed = threading.Event()
+            download_error: list[Exception] = []
+
+            def download_worker() -> None:
+                try:
+                    from faster_whisper.utils import download_model
+
+                    download_model(
+                        model_name,
+                        output_dir=str(model_dir),
+                        local_files_only=False,
+                    )
+                except Exception as exc:
+                    download_error.append(exc)
+                finally:
+                    completed.set()
+
+            threading.Thread(
+                target=download_worker,
+                name=f"local-whisper-download-{config.get_local_whisper_profile()}",
+                daemon=True,
+            ).start()
+
+            while not completed.wait(cls.PROGRESS_INTERVAL_SECONDS):
+                cls._emit_setup_progress(
+                    progress_callback,
+                    state="downloading",
+                    model=model_name,
+                    model_dir=model_dir,
+                    downloaded_bytes=cls._downloaded_payload_bytes(model_dir),
+                    total_bytes=total_bytes,
+                    message="Downloading local model...",
+                )
+
+            if download_error:
+                raise download_error[0]
+
+            cls._emit_setup_progress(
+                progress_callback,
+                state="verifying",
+                model=model_name,
+                model_dir=model_dir,
+                downloaded_bytes=cls._downloaded_payload_bytes(model_dir),
+                total_bytes=total_bytes,
+                message="Verifying local model files...",
+            )
+            if not cls._model_files_ready(model_dir):
+                raise RuntimeError("Local model download is incomplete. Try setup again.")
+
+            verified_bytes = cls._downloaded_payload_bytes(model_dir)
+            cls._emit_setup_progress(
+                progress_callback,
+                state="complete",
+                model=model_name,
+                model_dir=model_dir,
+                downloaded_bytes=verified_bytes,
+                total_bytes=total_bytes,
+                message="Local mode is ready.",
             )
             return {
                 **cls.get_status(config),
@@ -605,21 +742,91 @@ class LocalWhisperTranscriber:
                 "message": "Local mode is ready.",
             }
         except Exception as e:
+            cls._emit_setup_progress(
+                progress_callback,
+                state="error",
+                model=model_name,
+                model_dir=model_dir,
+                downloaded_bytes=cls._downloaded_payload_bytes(model_dir),
+                total_bytes=locals().get("total_bytes", 0),
+                message=f"Local mode setup failed: {e}",
+            )
             return {
                 **cls.get_status(config),
                 "status": "error",
                 "message": f"Local mode setup failed: {e}",
             }
+        finally:
+            cls._prepare_lock.release()
+
+    @classmethod
+    def _emit_setup_progress(
+        cls,
+        callback: Optional[Callable[[dict], None]],
+        *,
+        state: str,
+        model: str,
+        model_dir: Path,
+        downloaded_bytes: int,
+        total_bytes: int,
+        message: str,
+    ) -> None:
+        if callback is None:
+            return
+        clamped_downloaded = max(0, min(downloaded_bytes, total_bytes)) if total_bytes > 0 else max(0, downloaded_bytes)
+        percent = (clamped_downloaded / total_bytes * 100.0) if total_bytes > 0 else 0.0
+        if state == "complete":
+            percent = 100.0
+        callback(
+            {
+                "state": state,
+                "model": model,
+                "downloaded_bytes": clamped_downloaded,
+                "total_bytes": total_bytes,
+                "percent": percent,
+                "model_dir": str(model_dir),
+                "message": message,
+            }
+        )
+
+    @classmethod
+    def _downloaded_payload_bytes(cls, model_dir: Path) -> int:
+        """Count ready and in-progress model payload bytes without metadata duplicates."""
+        if not model_dir.exists():
+            return 0
+
+        total = 0
+        seen_files: set[tuple[int, int]] = set()
+        for path in model_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            relative_parts = path.relative_to(model_dir).parts
+            in_huggingface_cache = ".cache" in relative_parts and "huggingface" in relative_parts
+            is_payload = any(fnmatchcase(path.name, pattern) for pattern in cls.DOWNLOAD_FILE_PATTERNS)
+            is_partial_payload = in_huggingface_cache and path.name.endswith(".incomplete")
+            if not is_payload and not is_partial_payload:
+                continue
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            identity = (stat.st_dev, stat.st_ino)
+            if stat.st_ino and identity in seen_files:
+                continue
+            if stat.st_ino:
+                seen_files.add(identity)
+            total += stat.st_size
+        return total
 
     @staticmethod
     def _model_files_ready(model_dir: Path) -> bool:
         """Check for the minimal CTranslate2 files faster-whisper needs."""
         if not model_dir.exists() or not model_dir.is_dir():
             return False
-        required_any = ["model.bin", "model.bin.index.json"]
-        required_all = ["config.json", "tokenizer.json"]
-        return any((model_dir / name).exists() for name in required_any) and all(
-            (model_dir / name).exists() for name in required_all
+        required_files = ["model.bin", "config.json", "tokenizer.json"]
+        return all(
+            (model_dir / name).is_file() and (model_dir / name).stat().st_size > 0
+            for name in required_files
         )
 
     @classmethod

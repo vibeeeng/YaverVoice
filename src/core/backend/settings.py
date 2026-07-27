@@ -234,9 +234,17 @@ class SettingsMixin:
         self.config.reload_env()
         return LocalWhisperTranscriber.get_status(self.config)
 
+    def get_local_whisper_setup_info(self) -> dict[str, Any]:
+        """Return trusted model download metadata without downloading model files."""
+        self.config.reload_env()
+        return LocalWhisperTranscriber.get_setup_info(self.config)
+
     def prepare_local_whisper_model(self) -> dict[str, Any]:
         self.config.reload_env()
-        result = LocalWhisperTranscriber.prepare_model(self.config)
+        result = LocalWhisperTranscriber.prepare_model(
+            self.config,
+            progress_callback=lambda payload: self._emit("settings.local_whisper_progress", payload),
+        )
         self._emit("settings.changed", {"config": self.get_config()})
         return result
 

@@ -66,6 +66,38 @@ class SidecarProtocolTests(SidecarTestCase):
         self.assertEqual(messages[1]["id"], 4)
         self.assertEqual(messages[1]["result"]["history"][0]["text"], "hello")
 
+    def test_sidecar_streams_local_model_progress_before_response(self):
+        emitted = []
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ):
+            service = self.make_service(temp_dir)
+
+            def fake_prepare():
+                service._emit(
+                    "settings.local_whisper_progress",
+                    {
+                        "state": "downloading",
+                        "downloaded_bytes": 50,
+                        "total_bytes": 100,
+                        "percent": 50.0,
+                    },
+                )
+                return {"status": "error", "transcription_ready": False}
+
+            service.prepare_local_whisper_model = fake_prepare
+            server = SidecarJsonRpcServer(service, event_writer=emitted.append)
+            service._on_event = server.queue_event
+
+            messages = server.handle_line_messages(
+                '{"jsonrpc":"2.0","id":5,"method":"settings.prepare_local_whisper_model","params":{}}'
+            )
+
+        self.assertEqual(emitted[0]["method"], "settings.local_whisper_progress")
+        self.assertEqual(emitted[0]["params"]["downloaded_bytes"], 50)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0]["id"], 5)
+
     def test_sidecar_subprocess_ping(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             env = os.environ.copy()

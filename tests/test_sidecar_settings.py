@@ -53,6 +53,69 @@ class SidecarSettingsTests(SidecarTestCase):
         self.assertEqual(result["audio_cleanup_mode"], "off")
         self.assertFalse(result["audio_cleanup_enabled"])
 
+    def test_local_whisper_setup_info_uses_metadata_only_transcriber_contract(self):
+        expected = {
+            "profile": "balanced",
+            "model": "small",
+            "display_name": "Balanced",
+            "repository": "Systran/faster-whisper-small",
+            "source_url": "https://huggingface.co/Systran/faster-whisper-small",
+            "total_bytes": 123,
+            "model_dir": "managed-model-dir",
+            "already_ready": False,
+        }
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ), patch("src.core.transcriber.LocalWhisperTranscriber.get_setup_info", return_value=expected) as setup_info:
+            service = self.make_service(temp_dir)
+
+            result = service.get_local_whisper_setup_info()
+
+        self.assertEqual(result, expected)
+        setup_info.assert_called_once_with(service.config)
+
+    def test_prepare_local_whisper_model_emits_progress_and_preserves_error_result(self):
+        events = []
+
+        def fake_prepare(_config, progress_callback=None):
+            self.assertIsNotNone(progress_callback)
+            progress_callback(
+                {
+                    "state": "error",
+                    "model": "small",
+                    "downloaded_bytes": 50,
+                    "total_bytes": 100,
+                    "percent": 50.0,
+                    "model_dir": "managed-model-dir",
+                    "message": "network failed",
+                }
+            )
+            return {
+                "status": "error",
+                "message": "network failed",
+                "transcription_ready": False,
+            }
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
+            Config, "get_models_dir", return_value=Path(temp_dir) / "models"
+        ), patch(
+            "src.core.transcriber.LocalWhisperTranscriber.prepare_model",
+            side_effect=fake_prepare,
+        ), patch(
+            "src.core.transcriber.LocalWhisperTranscriber.dependency_error",
+            return_value="not installed",
+        ):
+            service = self.make_service(temp_dir)
+            service._on_event = lambda method, params: events.append((method, params))
+
+            result = service.prepare_local_whisper_model()
+
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(result["transcription_ready"])
+        self.assertEqual(events[0][0], "settings.local_whisper_progress")
+        self.assertEqual(events[0][1]["downloaded_bytes"], 50)
+        self.assertEqual(events[-1][0], "settings.changed")
+
     def test_settings_save_downgrades_rnnoise_modes_when_not_ready(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
             Config, "get_models_dir", return_value=Path(temp_dir) / "models"

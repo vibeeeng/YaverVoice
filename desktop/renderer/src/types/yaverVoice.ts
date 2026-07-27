@@ -19,6 +19,27 @@ export type LocalWhisperStatus = {
   [key: string]: unknown;
 };
 
+export type LocalWhisperSetupInfo = {
+  profile: string;
+  model: string;
+  display_name: string;
+  repository: string;
+  source_url: string;
+  total_bytes: number;
+  model_dir: string;
+  already_ready: boolean;
+};
+
+export type LocalWhisperProgress = {
+  state: "preparing" | "downloading" | "verifying" | "complete" | "error";
+  model: string;
+  downloaded_bytes: number;
+  total_bytes: number;
+  percent: number;
+  model_dir: string;
+  message: string;
+};
+
 export type Settings = {
   api_key_exists: boolean;
   api_key_length: number;
@@ -179,6 +200,10 @@ export type SidecarEvent =
       params: { config: Settings };
     }
   | {
+      method: "settings.local_whisper_progress";
+      params: LocalWhisperProgress;
+    }
+  | {
       method: "recording.state";
       params: RecordingStatus;
     }
@@ -193,8 +218,9 @@ export type YaverVoiceApi = {
     get: () => Promise<Settings>;
     save: (params: Record<string, unknown>) => Promise<Settings>;
     saveHotkeys: (params: Record<string, unknown>) => Promise<{ success: boolean; message: string; config: Settings }>;
+    getLocalWhisperSetupInfo: () => Promise<LocalWhisperSetupInfo>;
     getLocalWhisperStatus: () => Promise<LocalWhisperStatus>;
-    prepareLocalWhisperModel: () => Promise<Record<string, unknown>>;
+    prepareLocalWhisperModel: () => Promise<LocalWhisperStatus>;
     installRnnoiseModel: () => Promise<{ success: boolean; message: string; config: Settings } | null>;
   };
   hotkeys: {
