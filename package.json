@@ -27,7 +27,9 @@
     "desktop:compile": "tsc -p tsconfig.electron.json && vite build",
     "desktop:build": "npm run desktop:compile && electron-builder --win nsis portable --x64",
     "desktop:typecheck": "tsc -p tsconfig.electron.json && tsc -p tsconfig.renderer.json --noEmit",
-    "desktop:electron:dev": "wait-on http://127.0.0.1:5173 && tsc -p tsconfig.electron.json && electron ."
+    "desktop:electron:dev": "wait-on http://127.0.0.1:5173 && tsc -p tsconfig.electron.json && electron .",
+    "security:audit": "node desktop/scripts/security-audit.js",
+    "security:audit:test": "node --test desktop/scripts/security-audit.test.js"
   },
   "build": {
     "appId": "com.yavervoice.desktop",
@@ -87,7 +89,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
     "electron": "43.1.0",
-    "electron-builder": "^26.8.1",
+    "electron-builder": "^26.15.3",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,2 +1,4 @@
 # Optional local transcription backend
 faster-whisper>=1.2.1
+huggingface-hub>=1.23.0
+tqdm

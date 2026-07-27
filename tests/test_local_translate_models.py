@@ -88,6 +88,26 @@ class LocalTranslateModelTests(unittest.TestCase):
         module.snapshot_download = snapshot_download
         return module
 
+    @staticmethod
+    def make_tqdm_modules() -> tuple[types.ModuleType, types.ModuleType]:
+        tqdm_module = types.ModuleType("tqdm")
+        auto_module = types.ModuleType("tqdm.auto")
+
+        class FakeTqdm:
+            def __init__(self, *args, **kwargs):
+                self.n = int(kwargs.get("initial", 0) or 0)
+
+            def update(self, n=1):
+                self.n += int(n or 0)
+                return True
+
+            def close(self):
+                return None
+
+        auto_module.tqdm = FakeTqdm
+        tqdm_module.auto = auto_module
+        return tqdm_module, auto_module
+
     def test_local_setup_info_reports_allowlisted_source_size_and_destination(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(os.environ, {}, clear=True), patch.object(
             Config, "get_models_dir", return_value=Path(temp_dir) / "models"
@@ -103,7 +123,9 @@ class LocalTranslateModelTests(unittest.TestCase):
                 ]
             )
 
-            with patch.dict(sys.modules, {"huggingface_hub": huggingface_module}):
+            with patch.dict(sys.modules, {"huggingface_hub": huggingface_module}), patch.object(
+                LocalWhisperTranscriber, "dependency_error", return_value=None
+            ):
                 info = LocalWhisperTranscriber.get_setup_info(config)
 
         self.assertEqual(info["display_name"], "Quality Turbo")
@@ -142,6 +164,7 @@ class LocalTranslateModelTests(unittest.TestCase):
             utils_module.download_model = fake_download_model
             faster_whisper_module = types.ModuleType("faster_whisper")
             faster_whisper_module.utils = utils_module
+            tqdm_module, tqdm_auto_module = self.make_tqdm_modules()
 
             with patch.dict(
                 sys.modules,
@@ -149,6 +172,8 @@ class LocalTranslateModelTests(unittest.TestCase):
                     "faster_whisper": faster_whisper_module,
                     "faster_whisper.utils": utils_module,
                     "huggingface_hub": huggingface_module,
+                    "tqdm": tqdm_module,
+                    "tqdm.auto": tqdm_auto_module,
                 },
             ), patch.object(LocalWhisperTranscriber, "PROGRESS_INTERVAL_SECONDS", 0.01):
                 result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
@@ -211,6 +236,7 @@ class LocalTranslateModelTests(unittest.TestCase):
             utils_module.download_model = fake_download_model
             faster_whisper_module = types.ModuleType("faster_whisper")
             faster_whisper_module.utils = utils_module
+            tqdm_module, tqdm_auto_module = self.make_tqdm_modules()
 
             with patch.dict(
                 sys.modules,
@@ -218,6 +244,8 @@ class LocalTranslateModelTests(unittest.TestCase):
                     "faster_whisper": faster_whisper_module,
                     "faster_whisper.utils": utils_module,
                     "huggingface_hub": huggingface_module,
+                    "tqdm": tqdm_module,
+                    "tqdm.auto": tqdm_auto_module,
                 },
             ), patch.object(LocalWhisperTranscriber, "PROGRESS_INTERVAL_SECONDS", 0.01):
                 result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
@@ -243,6 +271,7 @@ class LocalTranslateModelTests(unittest.TestCase):
             utils_module.download_model = lambda _model_name, **kwargs: kwargs["output_dir"]
             faster_whisper_module = types.ModuleType("faster_whisper")
             faster_whisper_module.utils = utils_module
+            tqdm_module, tqdm_auto_module = self.make_tqdm_modules()
 
             with patch.dict(
                 sys.modules,
@@ -250,6 +279,8 @@ class LocalTranslateModelTests(unittest.TestCase):
                     "faster_whisper": faster_whisper_module,
                     "faster_whisper.utils": utils_module,
                     "huggingface_hub": huggingface_module,
+                    "tqdm": tqdm_module,
+                    "tqdm.auto": tqdm_auto_module,
                 },
             ):
                 result = LocalWhisperTranscriber.prepare_model(config)
@@ -306,6 +337,7 @@ class LocalTranslateModelTests(unittest.TestCase):
             utils_module.download_model = fail_download
             faster_whisper_module = types.ModuleType("faster_whisper")
             faster_whisper_module.utils = utils_module
+            tqdm_module, tqdm_auto_module = self.make_tqdm_modules()
 
             with patch.dict(
                 sys.modules,
@@ -313,6 +345,8 @@ class LocalTranslateModelTests(unittest.TestCase):
                     "faster_whisper": faster_whisper_module,
                     "faster_whisper.utils": utils_module,
                     "huggingface_hub": huggingface_module,
+                    "tqdm": tqdm_module,
+                    "tqdm.auto": tqdm_auto_module,
                 },
             ):
                 result = LocalWhisperTranscriber.prepare_model(config, progress_callback=events.append)
@@ -446,6 +480,7 @@ class LocalTranslateModelTests(unittest.TestCase):
             huggingface_module = self.make_huggingface_module(
                 [("config.json", 10), ("model.bin", 100), ("tokenizer.json", 10)]
             )
+            tqdm_module, tqdm_auto_module = self.make_tqdm_modules()
             config = self.make_config(temp_dir, profile="balanced", translate=False)
 
             with patch.dict(
@@ -454,6 +489,8 @@ class LocalTranslateModelTests(unittest.TestCase):
                     "faster_whisper": faster_whisper_module,
                     "faster_whisper.utils": utils_module,
                     "huggingface_hub": huggingface_module,
+                    "tqdm": tqdm_module,
+                    "tqdm.auto": tqdm_auto_module,
                 },
             ):
                 status = LocalWhisperTranscriber.prepare_model(config)
